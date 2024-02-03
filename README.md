@@ -1,101 +1,75 @@
 # Debounce
 
-단축키 설정 애드온입니다. 기본 와우 설정창에서 지정하는 단축키들 외에 주문, 아이템, 매크로 등에 단축키를 지정할 수 있습니다.
+This is an addon for key bindings in World of Warcraft. It allows you to assign keys for different spells, items, macros and more.
 
-### **이 애드온은 와우의 단축키 설정이나 환경 설정을 전혀 변경하지 않습니다. 애드온이 마음에 들지 않을 경우 그냥 꺼버리거나 삭제하면 됩니다.**
 ### **This addon does not change any of the WoW's key bindings or settings. If you don't like the addon, you can just turn it off or delete it.**
 
-이 애드온은 와우의 기본 단축키 설정을 대체하기 위한 애드온이 아닙니다. 그보다는 기본 단축키 설정에 추가로 덧대어 사용하는 용도로 만들었습니다. 저는 개인적으로 모든 캐릭터에 동일하게 사용되는 단순 단축키들(이동키, 가방 열기 등등)은 캐릭터 별 단축키 설정을 끈 상태로 와우 기본 단축키 설정을 이용하고 그 외에 직업별, 전문화별, 캐릭터별 혹은 특정 상황에 따른 단축키들은 이 애드온을 통해 설정합니다.
+This addon is not meant to replace the default key bindings of WoW. Rather, it is designed to be used on top of the default key bindings. I personally use the default key bindings for simple keys that are common to all characters (such as movement keys, opening bags, etc.) with the character-specific key bindings turned off. For the rest of the keys that depend on the class, specialization, character, or situation, I use this addon to set them up.
 
 
-## 자잘한 기능들
-- 대상 지정(와우 기본 개체들, 방어 전담, 치유 전담, 임의로 지정한 사용자 대상, ...)
-- 개체창 위에서 클릭 캐스팅(**Clique**와 유사한 기능)
-- 공용, 직업, 전문화, 캐릭터별로 설정(포토샵의 **레이어**라고 생각하면 이해하기 쉬워요!)
-- 특수 조건에 따른 동적 단축키 설정
+## Small Features
+- Targets special units such as tanks, healer or custom targets.
+- Click Casting (like Clique)
+- Conditional bindings.
 
 
-## 사용 방법
-1. `/deb` 또는 `/debounce`로 설정창을 엽니다.
-2. 주문, 아이템, 탈것, 매크로 등을 창의 가운데로 끌어다 놓거나 추가 버튼을 클릭해서 그 외의 행동을 추가합니다.
-3. 추가된 행동을 마우스 왼쪽 버튼으로 클릭하여 단축키를 지정하거나 마우스 오른쪽 버튼으로 클릭하여 해당 행동에 대한 추가 설정을 합니다.
-4. 설정창 아래의 탭으로 공용 단축키 또는 캐릭터별, 설정창 오른쪽의 탭으로 직업 또는 전문화별 단축키를 선택할 수 있습니다. 상황에 맞는 모든 탭들의 단축키가 적용됩니다. 예: 조화 드루이드의 경우 공용, 공용/드루이드, 공용/조화, 캐릭터별, 캐릭터별/조화 탭의 단축키가 모두 함께 적용됩니다.
+## Usage
+1. Run `/deb` or `/debounce` to open the UI.
+2. Drag and drop a spell, item or macro in the middle of UI window. You can also add some special actions by clicking the Add button.
+3. Left click the added action to assign a key. Right click for more settings.
+4. Use the tabs below to switch between shared and character-specific bindings. To switch between general, class, and specialization specific bindings, use the tabs on the right. All the key bindings for the tabs that match your current class/specialization will be activated.
 
 
-## 사용 가능한 행동
-1. 주문
-2. 아이템
-3. 매크로
-4. 탈것
-5. 매크로 문자열 - 애드온 전용 매크로. @healer, @custom1 같은 개체를 사용할 수 있습니다. (예: `/시전 [@healer] 정신 자극`)
-6. 단축키 명령(와우 기본 단축키 설정에 있는 항목들. 예: 이동키)
-9. ...
+## Available Actions
+1. Spells
+2. Items
+3. Macros
+4. Mounts
+5. Macro Texts - **Macros that only work with this addon**. You can use target conditions with special units such as `@healer` or `@custom1` (Example: `/cast [@healer] Innervate`).
+6. Binding Commands - the Bindings in WoW's default key bindings UI.
+7. and More
 
 
-## 대상 지정
-와우에서 기본적으로 지원되는 개체들 이외에 **방어 전담**, **치유 전담**, **공격대 방어 전담**, **공격대 지원 공격 전담**의 역할를 갖는 개체, 사용자가 임의로 지정한 **사용자 대상 1**과 **2**, **마우스를 올린 개체창의 개체**를 대상으로 지정할 수 있습니다.
-(*역할에 따른 개체를 사용하는 경우 해당 역할을 가진 구성원이 파티/공격대 내에 한 명만 존재해야 동작합니다.*) 이 개체들은 전투 중에도 동적으로 업데이트 되며 매크로 문자열에서 각각 `@tank`, `@healer`, `@maintank`, `@mainassist`, `@custom1`, `@custom2`, `@hover`로 가르킬 수 있습니다.
-(예: `/시전 [@custom2,exists][@healer,exists][] 정신 자극`)
+## Targeting
+In addition to the ones that are supported by WoW, you can use special units, such as tank, healer, maintank, mainassist, custom1, custom2, and hover (the unit of the unit frame that is moused over). You can refer to these units with `@tank`, `@healer`, `@maintank`, `@mainassist`, `@custom1`, `@custom2`, or `@hover` in **Macro Texts**. (Example: `/cast [@custom2,exists][@healer,exists][] Innervate`)
 
 
-#### 사용자 대상
-주시 대상과 비슷하게 동작하는 사용자 대상을 최대 2개까지 지정합니다. 지정된 대상은 행동의 대상으로 지정하거나 매크로 문자열에서 `@custom1`, `@custom2`로 사용할 수 있습니다. (예: `/시전 [@custom1,exists][] 회복`).
+#### Custom Targets
+You can set up to two custom targets that work similarly to the focus target. You can use the custom targets as the targets of your actions or in the **Macro Texts** with `@custom1` and `@custom2`. (Example: `/cast [@custom1,exists][] Rejuvenation`)
 
-지원되는 개체: 플레이어 자신, 플레이어의 소환수, 파티/공격대 구성원, 우두머리 개체, 투기장 적 개체(투기장 적 개체에 대해서는 아직 한번도 테스트 해보지 않음!)
-
-지정 방법: 우선 사용자 대상 지정 행동을 추가하고 단축키를 지정합니다. 원하는 개체의 개체창 위에서 지정된 단축키를 눌러서 개체창의 개체를 사용자 대상으로 지정합니다. 대상 또는 주시 대상 개체창을 이용하는 경우 전투 중이 아닐 때에만 지정할 수 있습니다. **전투 중에는 플레이어, 소환수, 파티/공격대, 우두머리, 투기장 개체창을 사용하세요!** `/click DebounceCustom1 hover`, `/click DebounceCustom2 party1`와 같은 명령어를 사용할 수도 있습니다.
-
-
-### 마우스를 올린 개체창의 개체
+To assign a custom target, you should first add the *Set Custom Target* action and assign a key to it. Then, you can use that key to set the unit of the unit frame that you mouse over as a custom target. Alternatively, you can use this command: `/click DebounceCustom1 hover`.
 
 
 
-## 우선 순위
-추가된 행동들에 동일한 단축키를 지정할 수 있습니다. 이 경우 우선 순위에 따라 현재 상황에 가장 우선시 되는 행동이 선택됩니다. 우선순위는 다음의 규칙으로 정해집니다.
+## Priorities
+You can assign the same key to multiple actions that you added. In this case, the action that has the highest priority for the current situation will be selected. The priority is determined by the following rules.
 
-1. **우선 순위**로 설정된 값: 매우 높음, 높음, 기본, 낮음, 매우 낮음
-2. 사용자가 설정한 특수 조건이 있는 경우
-    1. 개체창 조건(개체창 위에 마우스를 올렸을 때)이 지정된 경우 그렇지 않은 경우보다 우선 순위가 높음
-    2. 그 외 특수 조건이 지정된 경우 그렇지 않은 경우보다 우선 순위가 높음
-3. 행동이 위치한 탭. 더 구체적인 구분이 덜 구체적인 구분보다 우선 순위가 높음
-    1. 캐릭터/전문화 탭(가장 높음)
-    2. 캐릭터 탭
-    3. 공용/전문화 탭
-    4. 공용/직업 탭
-    5. 공용 탭(가장 낮음)
-4. 설정 창의 목록에서의 순서(위에 있는 행동이 아래에 있는 행동보다 우선 순위가 높음). 마우스로 끌어서 변경합니다.
-
-
-## 특수 조건
-특수 조건들은 전투 중에도 동적으로 적용이 됩니다.
+1. Priority value that set by the user: Very High, High, Normal, Low, Very Low
+2. If there are special conditions set by the user
+    1. If the hover condition is specified, it has a higher priority than otherwise.
+    2. If any other special conditions are specified, they have a higher priority than those that are not.
+3. Priority of thes that contain actions.
+    1. Character-specific/Specialization-specific (Highest)
+    2. Character-specific
+    3. Shared/Specialization-specific
+    4. Shared/Class-specific
+    5. Shared General(Lowest)
+4. The position of the action in the tab. The action above has a higher priority than the action below. You can change this by dragging.
 
 
-### 개체창
-개체창(유닛프레임) 위에 마우스를 올린 상태. 이 조건이 지정된 경우 행동에 대한 대상은 기본적으로 개체창의 개체로 지정이 됩니다. 개체창과의 관계(우호적/비우호적), 개체창의 유형(플레이어/파티/공격대/우두머리)에 대한 추가 설정이 가능합니다.
+## Special Conditions
+Special conditions are dynamically applied during combat.
 
 
-### 행동 단축바
-변신/태세/형상에 따른 행동 단축바 상태, 지배 상태나 차량 행동 단축바 등.
+### Hovering over a Unit Frame
+Whether hovering over a unit frame or not. This condition also assigns the unit of the unit frame that is being hovered over as a target of the action by default.
 
 
-### 대상 개체가 존재할 때에만
-**대상 지정** - **개체가 존재하는 경우에만**이 선택된 경우.(***마우스를 올린 대상**이 대상으로 선택된 경우에는 **개체가 존재하는 경우에만** 설정을 추천하지 않습니다. 마우스를 올린 대상이 변경된 후 해당 조건이 실제로 적용되기 전까지 최대 0.2초 정도의 시간이 걸릴 수 있습니다. 이 경우 매크로 문자열 `/cast [@mouseover,exists] 회복`을 사용하세요.*)
+## Using Clique?
+If you use Clique and this addon at the same time, you will not be able to use some of the features of this addon (such as those related to unit frames). This addon includes some of Clique's features, but I don't know if it's necessary to replace Clique, a reliable addon that has been working well for a long time... You'll have to test it yourself.
 
 
-### 기타
-파티/공격대 상태, 전투, 은신, 변신/태세/형상, 소환수, 애완동물 대전, ...
+## I appreciate any help!
+- Oreo-Durotan(kr) (Alliance)
+- mundi4@gmail.com
 
-
-## Clique를 사용 중인데요?
-**Clique**와 이 애드온을 동시에 사용하는 경우 이 애드온의 일부 기능(개체창 관련 기능들)을 사용할 수 없습니다. 이 애드온에 **Clique**의 기능들이 어느정도 포함되어 있지만 오랜 기간 문제 없이 잘 작동해 오던 듬직한 애드온 **Clique**를 이 애드온으로 교체할 필요가 있을지는... 직접 테스트를 해보셔야 합니다.
-
-
-## 코드가 어설프네요?
-😢😢😢 취미로 인터넷 뒤져가며 배운 게 전부예요. **조언, 도움은 언제나 환영합니다! I appreciate any help!**
-- 듀로탄 서버(kr) 얼라이언스 Oreo (접속 자주 못 함)
-- 이메일 mundi4@gmail.com
-
-
-## 문의
-- 듀로탄 서버(kr) 얼라이언스 Oreo (접속 자주 못 함)
-- 이메일 mundi4@gmail.com
