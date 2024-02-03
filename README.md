@@ -48,7 +48,7 @@ You can assign the same key to multiple actions that you added. In this case, th
 2. If there are special conditions set by the user
     1. If the hover condition is specified, it has a higher priority than otherwise.
     2. If any other special conditions are specified, they have a higher priority than those that are not.
-3. Priority of thes that contain actions.
+3. Priority of tabs that contain actions.
     1. Character-specific/Specialization-specific (Highest)
     2. Character-specific
     3. Shared/Specialization-specific
