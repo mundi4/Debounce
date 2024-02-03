@@ -78,19 +78,19 @@ local UNIT_INFOS                 = {
 	},
 	tank = {
 		name = LLL["UNIT_ROLE_TANK"],
-		tooltip = LLL["UNIT_ROLE_DESC"],
+		tooltipTitle = LLL["UNIT_ROLE_DESC"],
 	},
 	healer = {
 		name = LLL["UNIT_ROLE_HEALER"],
-		tooltip = LLL["UNIT_ROLE_DESC"],
+		tooltipTitle = LLL["UNIT_ROLE_DESC"],
 	},
 	maintank = {
 		name = LLL["UNIT_ROLE_MAIN_TANK"],
-		tooltip = LLL["UNIT_ROLE_DESC"],
+		tooltipTitle = LLL["UNIT_ROLE_DESC"],
 	},
 	mainassist = {
 		name = LLL["UNIT_ROLE_MAIN_ASSIST"],
-		tooltip = LLL["UNIT_ROLE_DESC"],
+		tooltipTitle = LLL["UNIT_ROLE_DESC"],
 	},
 	custom1 = {
 		name = LLL["UNIT_CUSTOM1"],
@@ -100,14 +100,14 @@ local UNIT_INFOS                 = {
 	},
 	hover = {
 		name = LLL["UNIT_HOVER"],
-		spell = false,
-		item = false,
+		-- spell = false,
+		-- item = false,
 		tooltipTitle = LLL["UNIT_HOVER_DESC"],
 		tooltipWarning = DebouncePrivate.CliqueDetected and ERROR_COLOR:WrapTextInColorCode(LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"]) or nil,
 	},
 	none = {
 		name = LLL["UNIT_NONE"],
-		tooltip = LLL["UNIT_NONE_DESC"],
+		tooltipTitle = LLL["UNIT_NONE_DESC"],
 		target = false,
 		focus = false,
 		togglemenu = false,
@@ -1817,7 +1817,11 @@ function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
 		info.menuList = "blizzframes"
 		info.notCheckable = 1;
 		info.hasArrow = true;
+		info.tooltipTitle = "";
+		info.tooltipWarning = LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"];
 		UIDropDownMenu_AddButton(info, level);
+		info.tooltipTitle = nil;
+		info.tooltipWarning = nil;
 	elseif (level == 2) then
 		if (menuList == "blizzframes") then
 			info.menuList = nil;
@@ -2079,8 +2083,8 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 			for _, unit in ipairs(SORTED_UNIT_LIST) do
 				local unitInfo = UNIT_INFOS[unit];
 				if (unitInfo[action.type] ~= false) then
-					info.text = unitInfo.name .. (unitInfo.tooltip and LLL["_HAS_TOOLTIP_SUFFIX"] or "");
-					info.tooltipTitle = unitInfo.tooltip;
+					info.text = unitInfo.name .. (unitInfo.tooltipTitle and LLL["_HAS_TOOLTIP_SUFFIX"] or "");
+					info.tooltipTitle = unitInfo.tooltipTitle;
 					info.checked = action.unit == unit;
 					info.func = function()
 						action.unit = unit;
