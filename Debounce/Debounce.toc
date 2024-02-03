@@ -1,0 +1,20 @@
+## Title: Debounce
+## Version: 1.0
+## Author: mundi4
+## Interface: 100205
+## IconTexture: 133015
+## SavedVariables: DebounceVars
+## SavedVariablesPerCharacter: DebounceVarsPerChar
+## OptionalDeps: Clique, Grid2, ViragDevTool
+## AddonCompartmentFunc: Debounce_CompartmentFunc
+## Notes: Key Bindings and a Little More.|n|nSlash Command: |cffffff00/deb|r
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\LibUIDropDownMenu\LibUIDropDownMenu.xml
+
+Locale.lua
+Debounce.xml
+DebounceUI.xml
+
+Public.lua

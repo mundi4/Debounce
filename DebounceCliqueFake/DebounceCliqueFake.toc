@@ -1,0 +1,8 @@
+## Title: Debounce Clique Fake
+## Version: 1.0
+## Author: mundi4
+## Interface: 100205
+## IconTexture: 133015
+## LoadOnDemand: 1
+
+DebounceCliqueFake.xml

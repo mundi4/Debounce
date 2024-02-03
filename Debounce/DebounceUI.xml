@@ -1,0 +1,816 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/FrameXML/UI.xsd">
+
+	<Script file="DebounceUI.lua" />
+
+	<Frame name="DebounceActionPlacerFrame" parent="UIParent" frameStrata="DIALOG" alpha="0.5" hidden="true">
+		<Size x="450" y="46"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Background" atlas="ClickCastList-ButtonBackground" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER" x="-35" y="0"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Icon">
+					<Size x="35" y="35"/>
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="LEFT"/>
+					</Anchors>
+				</Texture>
+				<FontString parentKey="Name" inherits="GameFontNormal" maxLines="1" justifyH="LEFT">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="LEFT" relativeKey="$parent.Icon" relativePoint="RIGHT" x="5" y="7"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnUpdate>
+				local cursorX, cursorY = GetScaledCursorPosition();
+				self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", cursorX + 10, cursorY + 0);
+			</OnUpdate>
+		</Scripts>
+	</Frame>
+
+	<Button name="DebounceLineTemplate" mixin="DebounceLineMixin" virtual="true">
+		<Size x="450" y="46"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="TopBorder" parentArray="Textures" hidden="true">
+					<Size y="2.0" />
+					<Anchors>
+						<Anchor point="BOTTOMLEFT" relativePoint="TOPLEFT" x="-4" y="2"/>
+                        <Anchor point="BOTTOMRIGHT" relativePoint="TOPRIGHT" x="4" y="2"/>
+					</Anchors>
+					<Color r="1" g="1" b="1" a="1"/>
+				</Texture>
+				<Texture parentKey="BottomBorder" parentArray="Textures" hidden="true">
+					<Size y="2.0" />
+					<Anchors>
+						<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="-4" y="-2"/>
+						<Anchor point="TOPRIGHT" relativePoint="BOTTOMRIGHT" x="4" y="-2"/>
+					</Anchors>
+					<Color r="1" g="1" b="1" a="1"/>
+				</Texture>
+				<Texture parentKey="Background" atlas="ClickCastList-ButtonBackground" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture file="Interface\Buttons\UI-EmptySlot-Disabled">
+					<Size x="39" y="39"/>
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="LEFT" x="-2" y="0"/>
+					</Anchors>
+					<TexCoords left="0.140625" right="0.84375" top="0.140625" bottom="0.84375"/>
+				</Texture>
+			</Layer>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Icon">
+					<Size x="35" y="35"/>
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="LEFT" x="0" y="0"/>
+					</Anchors>
+				</Texture>
+				<FontString parentKey="Name" inherits="GameFontNormal" maxLines="1" justifyH="LEFT">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="LEFT" relativeKey="$parent.Icon" relativePoint="RIGHT" x="5" y="7"/>
+					</Anchors>
+				</FontString>
+				<FontString parentKey="InfoText" inherits="GameFontNormalSmall" justifyH="RIGHT">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-5" y="-9"/>
+					</Anchors>
+					<Color color="NORMAL_FONT_COLOR"/>
+				</FontString>
+				<FontString parentKey="BindingText" inherits="GameFontHighlightSmall" maxLines="1" justifyH="LEFT">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="LEFT" relativeKey="$parent.Name" relativePoint="LEFT" x="0" y="-15"/>
+					</Anchors>
+				</FontString>
+				<Texture parentKey="QuestionMark" atlas="questlog-questtypeicon-quest" hidden="false">
+					<Size x="14" y="14"/>
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-2" y="7"/>
+					</Anchors>
+				</Texture>
+				<FontString parentKey="InfoText2" inherits="GameFontNormalSmall" justifyH="RIGHT">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-5" y="9"/>
+					</Anchors>
+					<Color r="1" g="1" b="1" a="1"/>
+				</FontString>
+				<FontString parentKey="SpecialConditionsText" inherits="GameFontNormalSmall" maxLines="1" justifyH="RIGHT" text="">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-5" y="9"/>
+					</Anchors>
+					<Color r="1" g="1" b="1" a="1"/>
+				</FontString>
+			</Layer>
+			<Layer level="OVERLAY">
+				<Texture parentKey="SelectedHighlight" atlas="auctionhouse-ui-row-select" alpha=".8" hidden="true" alphaMode="ADD"/>
+			</Layer>
+			<Layer level="HIGHLIGHT">
+				<Texture parentKey="FrameHighlight" atlas="ClickCastList-ButtonHighlight" useAtlasSize="true" alphaMode="ADD">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<Color r="1" g="1" b="0" a="1"/>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnEnter method="OnEnter"/>
+			<OnLeave method="OnLeave"/>
+			<OnClick method="OnClick"/>
+			<OnDragStart method="OnDragStart"/>
+			<OnDragStop method="OnDragStop"/>
+			<OnReceiveDrag method="OnReceiveDrag"/>
+		</Scripts>
+	</Button>
+
+	<Button name="DebounceFrameTabTemplate" mixin="DebounceTabMixin" virtual="true" inherits="PanelTabButtonTemplate">
+		<Scripts>
+			<OnClick method="OnClick"/>
+			<OnEnter method="OnEnter"/>
+			<OnLeave method="OnLeave"/>
+		</Scripts>
+	</Button>
+
+	<CheckButton name="DebounceSideTabTemplate" mixin="DebounceSideTabMixin" virtual="true" hidden="true">
+		<Size x="32" y="32"/>
+		<Layers>
+            <Layer level="BACKGROUND">
+				<Texture file="Interface\SpellBook\SpellBook-SkillLineTab">
+					<Size x="64" y="64"/>
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset x="-3" y="11"/>
+						</Anchor>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+		<NormalTexture/>
+		<HighlightTexture file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD"/>
+		<CheckedTexture file="Interface\Buttons\CheckButtonHilight" alphaMode="ADD"/>
+		<Scripts>
+			<OnClick method="OnClick"/>
+			<OnEnter method="OnEnter"/>
+			<OnLeave method="OnLeave"/>
+			<OnEnable method="OnEnable"/>
+			<OnDisable method="OnDisable"/>
+		</Scripts>
+	</CheckButton>
+
+	<Frame name="DebounceFrame" inherits="PortraitFrameTemplate" parent="UIParent" toplevel="true" frameStrata="MEDIUM" enableMouse="true" hidden="true" mixin="DebounceFrameMixin" movable="true" clampedToScreen="true" enableKeyboard="true">
+		<Size x="440" y="620"/>
+		<Anchors>
+			<Anchor point="CENTER"/>
+		</Anchors>
+		<Frames>
+			<Frame parentKey="ScrollBoxBackground" inherits="TooltipBackdropTemplate" frameLevel="2">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="4" y ="535"/>
+					<Anchor point="BOTTOMRIGHT" x="-31" y="10"/>
+				</Anchors>
+				<KeyValues>
+					<KeyValue key="backdropBorderColor" value="DARKGRAY_COLOR" type="global"/>
+					<KeyValue key="backdropColor" value="BLACK_FONT_COLOR" type="global"/>
+				</KeyValues>
+				<Layers>
+					<Layer level="OVERLAY">
+						<FontString parentKey="AddInstructionText" inherits="GameFontGreen" justifyH="CENTER" text="Drag to here!" hidden="true">
+							<Anchors>
+								<Anchor point="TOP"  relativePoint="TOP" x="0" y="-40"/>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Frames>
+					<Frame parentKey="Highlight" inherits="GlowBorderTemplate" hidden="true" alpha="0.4">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativePoint="TOPLEFT" x="3" y ="-3"/>
+							<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-3" y ="3"/>
+						</Anchors>
+					</Frame>
+				</Frames>
+			</Frame>
+
+			<Button parentKey="ScrollBox" inherits="WowScrollBoxList" frameLevel="3">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPLEFT" x="5" y ="-5"/>
+					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.ScrollBoxBackground" relativePoint="BOTTOMRIGHT" x="-5" y ="5"/>
+				</Anchors>
+				<Layers>
+					<Layer level="ARTWORK">
+						<FontString parentKey="EmptyText" hidden="true" inherits="GameFontDisable">
+							<Size x="320" y="0"/>
+							<Anchors>
+								<Anchor point="TOP" x="0" y="-40"/>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+
+			</Button>
+			<EventFrame parentKey="ScrollBar" inherits="MinimalScrollBar">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPRIGHT" x="5" y="-5"/>
+					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="BOTTOMRIGHT" x="5" y="5"/>
+				</Anchors>
+			</EventFrame>
+			<Button parentKey="AddButton" inherits="UIPanelButtonTemplate" text="ADD">
+				<Size x="90" y="23"/>
+				<Anchors>
+					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPLEFT" x="2" y="0"/>
+				</Anchors>
+			</Button>
+			<Button parentKey="OptionsButton" inherits="UIPanelButtonTemplate" text="OPTIONS">
+				<Size x="90" y="23"/>
+				<Anchors>
+					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPRIGHT" x="-2" y="0"/>
+				</Anchors>
+			</Button>
+			<Button parentKey="OverviewButton" inherits="UIPanelButtonTemplate" text="OVERVIEW">
+				<Size x="90" y="23"/>
+				<Anchors>
+					<Anchor point="RIGHT" relativeKey="$parent.OptionsButton" relativePoint="LEFT" x="-2" y="0"/>
+				</Anchors>
+			</Button>
+			<Button parentKey="Tab1" inherits="DebounceFrameTabTemplate" text="GENERAL" id="1">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="12" y="1"/>
+                </Anchors>
+			</Button>
+			<Button parentKey="Tab2" inherits="DebounceFrameTabTemplate" id="2">
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.Tab1" relativePoint="RIGHT" x="-15" y="0"/>
+				</Anchors>
+			</Button>
+
+			<Frame parentKey="SideTabsFrame">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativePoint="TOPLEFT"/>
+					<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT"/>
+				</Anchors>
+				<Frames>
+					<CheckButton parentArray="Tabs" parentKey="Tab1" inherits="DebounceSideTabTemplate" id="1">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativePoint="TOPRIGHT">
+								<Offset>
+									<AbsDimension x="0" y="-36"/>
+								</Offset>
+							</Anchor>
+						</Anchors>
+					</CheckButton>
+					<CheckButton parentArray="Tabs" parentKey="Tab2" inherits="DebounceSideTabTemplate" id="2">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.Tab1" relativePoint="BOTTOMLEFT">
+								<Offset>
+									<AbsDimension x="0" y="-17"/>
+								</Offset>
+							</Anchor>
+						</Anchors>
+					</CheckButton>
+					<CheckButton parentArray="Tabs" parentKey="Tab3" inherits="DebounceSideTabTemplate" id="3">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.Tab2" relativePoint="BOTTOMLEFT">
+								<Offset>
+									<AbsDimension x="0" y="-17"/>
+								</Offset>
+							</Anchor>
+						</Anchors>
+					</CheckButton>
+					<CheckButton parentArray="Tabs" parentKey="Tab4" inherits="DebounceSideTabTemplate" id="4">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.Tab3" relativePoint="BOTTOMLEFT">
+								<Offset>
+									<AbsDimension x="0" y="-17"/>
+								</Offset>
+							</Anchor>
+						</Anchors>
+					</CheckButton>
+					<CheckButton parentArray="Tabs" parentKey="Tab5" inherits="DebounceSideTabTemplate" id="5">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.Tab4" relativePoint="BOTTOMLEFT">
+								<Offset>
+									<AbsDimension x="0" y="-17"/>
+								</Offset>
+							</Anchor>
+						</Anchors>
+					</CheckButton>
+					<CheckButton parentArray="Tabs" parentKey="Tab6" inherits="DebounceSideTabTemplate" id="6">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.Tab4" relativePoint="BOTTOMLEFT">
+								<Offset>
+									<AbsDimension x="0" y="-17"/>
+								</Offset>
+							</Anchor>
+						</Anchors>
+					</CheckButton>
+				</Frames>
+			</Frame>
+		</Frames>
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString parentKey="CombatText" inherits="GameFontRed" justifyH="LEFT">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativePoint="TOPLEFT" x="60" y="-30"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+			<Layer level="OVERLAY">
+				<FontString parentKey="UnboundText" inherits="GameFontRed">
+					<Anchors>
+						<Anchor point="CENTER" relativePoint="BOTTOM" x="0" y="40"/>
+					</Anchors>
+				</FontString>
+									
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnShow method="OnShow"/>
+			<OnHide method="OnHide"/>
+			<OnEvent method="OnEvent"/>
+			<OnKeyDown method="OnKeyDown"/>
+		</Scripts>
+	</Frame>
+
+	<Button name="DebounceKeybindFrame" parent="DebounceFrame" mixin="DebounceKeybindFrameMixin" toplevel="true" frameStrata="DIALOG" enableMouse="true" enableKeyboard="true" hidden="true">
+		<Size x="400" y="250"/>
+		<Anchors>
+			<Anchor point="CENTER" relativeTo="UIParent" relativePoint="CENTER"/>
+		</Anchors>
+		<Layers>
+			<Layer level="BORDER">
+				<FontString parentKey="ActionNameText" inherits="GameFontHighlightLarge">
+					<Size x="350" y="0"/>
+					<Anchors>
+						<Anchor point="TOP" relativePoint="TOP" x="0" y="-35"/>
+					</Anchors>
+				</FontString>
+				<FontString parentKey="InstructionText" inherits="GameFontWhite" wordwrap="true">
+					<Size x="350" y="50"/>
+					<Anchors>
+						<Anchor point="TOP" x="0" y="-50" />
+					</Anchors>
+				</FontString>
+				<FontString parentKey="PreviousKeyText" inherits="GameFontWhite">
+					<Anchors>
+						<Anchor point="CENTER" relativeKey="$parent.InstructionText" relativePoint="CENTER" x="0" y="-40"/>
+					</Anchors>
+				</FontString>
+				<FontString parentKey="NewKeyText" inherits="GameFontWhite">
+					<Anchors>
+						<Anchor point="CENTER" relativeKey="$parent.PreviousKeyText" relativePoint="CENTER" x="0" y="-25"/>
+					</Anchors>
+				</FontString>
+				<FontString parentKey="WarningText" inherits="GameFontRed" wordwrap="true">
+					<Size x="350" y="50"/>
+					<Anchors>
+						<Anchor point="CENTER" relativeKey="$parent.NewKeyText" relativePoint="CENTER" x="0" y="-40"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Frame parentKey="BG" inherits="DialogBorderTemplate"/>
+			<Frame parentKey="Header" inherits="DialogHeaderTemplate">
+				<KeyValues>
+					<KeyValue key="textString" value="KEY_BINDING" type="global"/>
+				</KeyValues>
+			</Frame>
+			<Button parentKey="UnbindButton" inherits="UIPanelButtonTemplate" text="UNBIND">
+				<Size x="128" y="22"/>
+				<Anchors>
+					<Anchor point="CENTER" x="0" y="-95"/>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						self:GetParent():UnbindButton_OnClick(self);
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button parentKey="CancelButton" inherits="UIPanelButtonTemplate" text="CANCEL">
+				<Size x="96" y="22"/>
+				<Anchors>
+					<Anchor point="BOTTOMLEFT" relativeKey="$parent.UnbindButton" relativePoint="BOTTOMRIGHT" x="25" y="0"/>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						self:GetParent():CancelButton_OnClick();
+					</OnClick>
+				</Scripts>				
+			</Button>
+			<Button parentKey="OkayButton" inherits="UIPanelButtonTemplate" text="OKAY">
+				<Size x="96" y="22"/>
+				<Anchors>
+					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.UnbindButton" relativePoint="BOTTOMLEFT" x="-25" y="0"/>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						self:GetParent():OkayButton_OnClick(self);
+					</OnClick>
+				</Scripts>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+			<OnShow method="OnShow"/>
+			<OnHide method="OnHide"/>
+			<OnKeyDown method="OnKeyDown"/>
+			<OnClick method="OnClick"/>
+			<OnMouseWheel method="OnMouseWheel"/>
+			<OnGamePadButtonDown method="OnGamePadButtonDown"/>
+		</Scripts>
+	</Button>
+
+	<Frame name="DebounceIconSelectorFrame" mixin="DebounceIconSelectorFrameMixin" inherits="IconSelectorPopupFrameTemplate" toplevel="true" frameStrata="HIGH" parent="DebounceFrame" movable="true" enableMouse="true" hidden="true">
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+
+	<Button name="DebounceMacroButtonTemplate" inherits="SelectorButtonTemplate" virtual="true">
+		<Layers>
+			<Layer level="OVERLAY">
+				<FontString parentKey="Name" inherits="GameFontHighlightSmallOutline">
+					<Size x="36" y="10"/>
+					<Anchors>
+						<Anchor point="BOTTOM" x="0" y="2"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+	</Button>
+
+	<ScrollFrame name="DebounceScrollFrameTemplate" inherits="ScrollFrameTemplate" virtual="true">
+		<KeyValues>
+			<KeyValue key="scrollBarX" value="6" type="number"/>
+			<KeyValue key="scrollBarTopY" value="-4" type="number"/>
+			<KeyValue key="scrollBarBottomY" value="5" type="number"/>
+		</KeyValues>
+	</ScrollFrame>
+
+	<Frame name="DebounceMacroFrame" mixin="DebounceMacroFrameMixin" toplevel="true" movable="true" frameStrata="HIGH" parent="DebounceFrame" hidden="true" enableMouse="true">
+		<Size x="338" y="410"/>
+		<Anchors>
+			<Anchor point="TOPLEFT" relativePoint="TOPRIGHT" x="0" y="0"/>
+		</Anchors>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="BG">
+					<Anchors>
+						<Anchor point="TOPLEFT" x="7" y="-7"/>
+						<Anchor point="BOTTOMRIGHT" x="-7" y="7"/>
+					</Anchors>
+					<Color r="0" g="0" b="0" a=".80"/>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Frame parentKey="BorderBox" inherits="NineSlicePanelTemplate" frameLevel="50" setAllPoints="true" >
+				<KeyValues>
+					<KeyValue key="layoutType" value="Dialog" type="string"/>
+				</KeyValues>
+				<Layers>
+					<Layer level="ARTWORK">
+						<Texture parentKey="SelectedMacroBackground" file="Interface\Buttons\UI-EmptySlot">
+							<Size x="64" y="64"/>
+							<Anchors>
+								<Anchor point="TOPLEFT" x="5" y="-3"/>
+							</Anchors>
+						</Texture>
+						<FontString parentKey="SelectedMacroName" inherits="GameFontNormal" justifyH="LEFT">
+							<Size x="256" y="16"/>
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeKey="$parent.SelectedMacroBackground" relativePoint="TOPRIGHT" x="-4" y="-12"/>
+							</Anchors>
+						</FontString>
+						<FontString name="DebounceMacroFrameEnterMacroText" inherits="GameFontHighlightSmall" text="ENTER_MACRO_LABEL">
+						<Anchors>
+							<Anchor point="TOPLEFT" x="15" y="-68"/>
+						</Anchors>
+						</FontString>
+						<FontString parentKey="CharLimitText" inherits="GameFontHighlightSmall">
+							<Size x="0" y="10"/>
+							<Anchors>
+								<Anchor point="BOTTOM" x="-15" y="42"/>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Frames>
+					<CheckButton parentKey="SelectedMacroButton" frameStrata="HIGH" inherits="DebounceMacroButtonTemplate" id="0">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.SelectedMacroBackground" x="14" y="-14"/>
+						</Anchors>
+						<Scripts>
+							<OnClick>
+								self:SetChecked(false);
+							</OnClick>
+						</Scripts>
+					</CheckButton>
+					<Button name="DebounceMacroEditButton" frameStrata="HIGH" inherits="UIPanelButtonTemplate" motionScriptsWhileDisabled="true" text="CHANGE_MACRO_NAME_ICON">
+						<Size x="170" y="22"/>
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.SelectedMacroBackground" x="55" y="-30"/>
+						</Anchors>
+						<Scripts>
+							<OnClick>
+								DebounceMacroFrame:EditButton_OnClick();
+							</OnClick>
+						</Scripts>
+					</Button>
+					<ScrollFrame parentKey="ScrollFrame" inherits="DebounceScrollFrameTemplate">
+						<Size x="286" y="272"/>
+						<Anchors>
+							<Anchor point="TOPLEFT" x="18" y="-83"/>
+						</Anchors>
+						<ScrollChild>
+							<EditBox parentKey="EditBox" multiLine="true" letters="1000" autoFocus="false" countInvisibleLetters="true">
+								<Size x="286" y="272"/>
+								<Scripts>
+									<OnLoad>
+										ScrollingEdit_OnCursorChanged(self, 0, 0, 0, 0);
+									</OnLoad>
+									<OnTextChanged>
+										DebounceMacroFrame:OnTextChanged(self);
+										--ScrollingEdit_OnTextChanged(self, self:GetParent());
+										--self:GetParent():GetParent().CharLimitText:SetFormattedText(MACROFRAME_CHAR_LIMIT, self:GetNumLetters());
+									</OnTextChanged>
+									<OnCursorChanged function="ScrollingEdit_OnCursorChanged"/>
+									<OnUpdate>
+										ScrollingEdit_OnUpdate(self, elapsed, self:GetParent());
+									</OnUpdate>
+									<OnEscapePressed function="EditBox_ClearFocus"/>
+								</Scripts>
+								<FontString inherits="GameFontHighlightSmall"/>
+							</EditBox>
+						</ScrollChild>
+					</ScrollFrame>
+					<Button>
+						<Size x="286" y="272"/>
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.ScrollFrame.EditBox"/>
+						</Anchors>
+						<Scripts>
+							<OnClick>
+								self:GetParent().ScrollFrame.EditBox:SetFocus();
+							</OnClick>
+						</Scripts>
+					</Button>
+					<Frame inherits="TooltipBackdropTemplate">
+						<Size x="318" y="280"/>
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.ScrollFrame" x="-7" y="5"/>
+						</Anchors>
+					</Frame>
+				</Frames>
+			</Frame>
+			<Button parentKey="CancelButton" inherits="UIPanelButtonTemplate" text="CANCEL">
+				<Size x="90" y="23"/>
+				<Anchors>
+					<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-14" y="14"/>
+				</Anchors>
+			</Button>
+			<Button parentKey="OkayButton" inherits="UIPanelButtonTemplate" text="OKAY">
+				<Size x="90" y="23"/>
+				<Anchors>
+					<Anchor point="RIGHT" relativeKey="$parent.CancelButton" relativePoint="LEFT" x="-2" y="0"/>
+				</Anchors>
+			</Button>
+
+		</Frames>
+		<Scripts>
+			<OnShow method="OnShow"/>
+			<OnHide method="OnHide"/>
+			<OnKeyDown method="OnKeyDown"/>
+		</Scripts>
+	</Frame>
+
+	<Frame name="DebounceOverviewHeaderTemplate" mixin="DebounceOverviewHeaderMixin" virtual="true">
+		<Size x="450" y="18"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="TopBorder" parentArray="Textures" hidden="true">
+					<Size y="1.0" />
+					<Anchors>
+						<Anchor point="BOTTOMLEFT" relativePoint="TOPLEFT" x="-2" y="0"/>
+                        <Anchor point="BOTTOMRIGHT" relativePoint="TOPRIGHT" x="2" y="0"/>
+					</Anchors>
+					<Color r="0.2" g="0.2" b="0.2" a="1"/>
+				</Texture>
+				<Texture parentKey="BottomBorder" parentArray="Textures" hidden="false">
+					<Size y="1.0" />
+					<Anchors>
+						<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="-2" y="0"/>
+						<Anchor point="TOPRIGHT" relativePoint="BOTTOMRIGHT" x="2" y="0"/>
+					</Anchors>
+					<Color r="0.4" g="0.4" b="0.4" a="1"/>
+				</Texture>
+
+			</Layer>
+			<Layer level="ARTWORK">
+				<FontString parentKey="Name" inherits="GameFontHighlight" maxLines="1" justifyH="LEFT">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="LEFT" x="0" y="-2"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+	</Frame>
+
+	<Button name="DebounceOverviewLineTemplate" mixin="DebounceOverviewLineMixin" virtual="true">
+		<Size x="450" y="30"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="TopBorder" parentArray="Textures" hidden="true">
+					<Size y="2.0" />
+					<Anchors>
+						<Anchor point="BOTTOMLEFT" relativePoint="TOPLEFT" x="-2" y="2"/>
+                        <Anchor point="BOTTOMRIGHT" relativePoint="TOPRIGHT" x="2" y="2"/>
+					</Anchors>
+					<Color r="0.2" g="0.2" b="0.2" a="1"/>
+				</Texture>
+				<Texture parentKey="BottomBorder" parentArray="Textures" hidden="true">
+					<Size y="2.0" />
+					<Anchors>
+						<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="0" y="-2"/>
+						<Anchor point="TOPRIGHT" relativePoint="BOTTOMRIGHT" x="4" y="-2"/>
+					</Anchors>
+					<Color r="0.2" g="0.2" b="0.2" a="1"/>
+				</Texture>
+				<Texture parentKey="Background" atlas="ClickCastList-ButtonBackground" useAtlasSize="true" hidden="false">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativePoint="TOPLEFT" x="0" y="0"/>
+                        <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="0"/>
+					</Anchors>
+				</Texture>
+				<Texture file="Interface\Buttons\UI-EmptySlot-Disabled" hidden="true">
+					<Size x="30" y="30"/>
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="LEFT" x="-2" y="0"/>
+					</Anchors>
+					<TexCoords left="0.140625" right="0.84375" top="0.140625" bottom="0.84375"/>
+				</Texture>
+			</Layer>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Icon">
+					<Size x="18" y="18"/>
+					<Anchors>
+						<Anchor point="TOPLEFT" relativePoint="TOPLEFT" x="6" y="-6"/>
+					</Anchors>
+				</Texture>
+				<FontString parentKey="Name" inherits="GameFontNormal" maxLines="1" justifyH="LEFT">
+					<Size x="240" y="0"/>
+					<Anchors>
+						<Anchor point="LEFT" relativeKey="$parent.Icon" relativePoint="RIGHT" x="5" y="0"/>
+					</Anchors>
+				</FontString>
+
+
+				<Texture parentKey="QuestionMark" atlas="questlog-questtypeicon-quest" hidden="false">
+					<Size x="18" y="18"/>
+					<Anchors>
+						<Anchor point="RIGHT" relativePoint="RIGHT" x="-10" y="0"/>
+					</Anchors>
+				</Texture>				
+				<FontString parentKey="UnitText" inherits="GameFontHighlightSmall" maxLines="1" justifyH="LEFT" hidden="false" text="@Target">
+					<Size x="100" y="0"/>
+					<Anchors>
+						<!-- <Anchor point="RIGHT" relativePoint="RIGHT" x="-6" y="0"/> -->
+						<!-- <Anchor point="LEFT" relativePoint="LEFT" x="250" y="0"/> -->
+						<!-- <Anchor point="LEFT" relativeKey="$parent.BindingText" relativePoint="RIGHT" x="10" y="0"/> -->
+						<Anchor point="RIGHT" relativeKey="$parent.QuestionMark" relativePoint="LEFT" x="-10" y="0"/>
+					</Anchors>
+				</FontString>
+				<FontString parentKey="BindingText" inherits="GameFontHighlightSmall" maxLines="1" justifyH="LEFT" hidden="false">
+					<!-- <Size x="200" y="0"/> -->
+					<Anchors>
+						<!-- <Anchor point="RIGHT" relativePoint="RIGHT" x="-6" y="0"/> -->
+						<!-- <Anchor point="LEFT" relativePoint="LEFT" x="250" y="0"/> -->
+						<Anchor point="LEFT" relativeKey="$parent.Name" relativePoint="RIGHT" x="10" y="0"/>
+						<Anchor point="RIGHT" relativeKey="$parent.UnitText" relativePoint="LEFT" x="-10" y="0"/>
+					</Anchors>
+				</FontString>
+				<FontString parentKey="InfoText" inherits="GameFontNormalSmall" justifyH="LEFT" hidden="true">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="LEFT" relativeKey="$parent.BindingText" relativePoint="RIGHT" x="10" y="0"/>
+					</Anchors>
+					<Color r="1" g="1" b="1" a="1"/>
+				</FontString>
+				<FontString parentKey="InfoText2" inherits="GameFontNormalSmall" justifyH="RIGHT"  hidden="true">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-5" y="9"/>
+					</Anchors>
+					<Color r="1" g="1" b="1" a="1"/>
+				</FontString>
+				<FontString parentKey="SpecialConditionsText" inherits="GameFontNormalSmall" maxLines="1" justifyH="RIGHT" text="" hidden="true">
+					<Size x="430" y="0"/>
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-5" y="9"/>
+					</Anchors>
+					<Color r="1" g="1" b="1" a="1"/>
+				</FontString>
+			</Layer>
+			<Layer level="OVERLAY">
+				<Texture parentKey="SelectedHighlight" atlas="auctionhouse-ui-row-select" alpha=".8" hidden="true" alphaMode="ADD"/>
+			</Layer>
+			<Layer level="HIGHLIGHT">
+				<Texture parentKey="FrameHighlight" atlas="ClickCastList-ButtonHighlight" useAtlasSize="true" alphaMode="ADD">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativePoint="TOPLEFT" x="0" y="0"/>
+                        <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="0"/>
+					</Anchors>
+					<Color r="1" g="1" b="0" a="1"/>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnEnter method="OnEnter"/>
+			<OnLeave method="OnLeave"/>
+		</Scripts>
+	</Button>
+
+	<Frame name="DebounceOverviewFrame" inherits="PortraitFrameTemplate" parent="UIParent" toplevel="true" frameStrata="MEDIUM" enableMouse="true" enableKeyboard="true" hidden="true" mixin="DebounceOverviewFrameMixin" movable="true" clampedToScreen="true" propagateKeyboardInput="true">
+		<Size x="640" y="620"/>
+		<Anchors>
+			<Anchor point="CENTER"/>
+		</Anchors>
+		<Frames>
+			<Frame parentKey="ScrollBoxBackground" inherits="TooltipBackdropTemplate" frameLevel="2">
+				<Anchors>
+					<!-- <Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="4" y ="535"/> -->
+					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" x="4" y ="-60"/>
+					<Anchor point="BOTTOMRIGHT" x="-31" y="10"/>
+				</Anchors>
+				<KeyValues>
+					<KeyValue key="backdropBorderColor" value="DARKGRAY_COLOR" type="global"/>
+					<KeyValue key="backdropColor" value="BLACK_FONT_COLOR" type="global"/>
+				</KeyValues>
+				<Layers>
+					<Layer level="OVERLAY">
+						<FontString parentKey="AddInstructionText" inherits="GameFontGreen" justifyH="CENTER" text="Drag to here!" hidden="true">
+							<Anchors>
+								<Anchor point="TOP"  relativePoint="TOP" x="0" y="-40"/>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Frames>
+					<Frame parentKey="Highlight" inherits="GlowBorderTemplate" hidden="true" alpha="0.4">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativePoint="TOPLEFT" x="3" y ="-3"/>
+							<Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-3" y ="3"/>
+						</Anchors>
+					</Frame>
+				</Frames>
+			</Frame>
+
+			<Button parentKey="ScrollBox" inherits="WowScrollBoxList" frameLevel="3">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPLEFT" x="5" y ="-5"/>
+					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.ScrollBoxBackground" relativePoint="BOTTOMRIGHT" x="-5" y ="5"/>
+				</Anchors>
+				<Layers>
+					<Layer level="ARTWORK">
+						<FontString parentKey="EmptyText" hidden="true" inherits="GameFontDisable">
+							<Size x="320" y="0"/>
+							<Anchors>
+								<Anchor point="TOP" x="0" y="-40"/>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+
+			</Button>
+			<EventFrame parentKey="ScrollBar" inherits="MinimalScrollBar">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPRIGHT" x="5" y="-5"/>
+					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="BOTTOMRIGHT" x="5" y="5"/>
+				</Anchors>
+			</EventFrame>
+		</Frames>
+		<Layers>
+		</Layers>
+		<Scripts>
+			<OnShow method="OnShow"/>
+			<OnHide method="OnHide"/>
+			<OnEvent method="OnEvent"/>
+			<OnKeyDown method="OnKeyDown"/>
+		</Scripts>
+	</Frame>
+</Ui>
