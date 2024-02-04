@@ -1,46 +1,55 @@
-﻿---@diagnostic disable: cast-local-type
-local _, DebouncePrivate         = ...;
-local NUM_SPECS                  = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
-local LibDD                      = LibStub:GetLibrary("LibUIDropDownMenu-4.0");
-local Constants                  = DebouncePrivate.Constants;
-local LLL                        = DebouncePrivate.L;
-local PLAYER_CLASS               = select(2, UnitClass("player"));
+﻿-- TODO
+-- SomethingDropDrop_Initialize 함수들이 너무 크다.
+-- 1. 다른 파일로 분리하고
+-- 2. 기능/메뉴 별로 함수들을 쪼개기
+--   예: SomeMenu_Initialize(level, menuList)...
+
+local _, DebouncePrivate = ...;
+local NUM_SPECS          = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
+local LibDD              = LibStub:GetLibrary("LibUIDropDownMenu-4.0");
+local Constants          = DebouncePrivate.Constants;
+local LLL                = DebouncePrivate.L;
+
+
 local MACRO_NAME_CHAR_LIMIT      = 32;
 local MACRO_CHAR_LIMIT           = 1000;
 local MAX_BONUS_ACTIONBAR_OFFSET = 5;
-local MAX_ACTIONBAR_TYPE_INDEX   = 14;
-local luatype                    = type;
-
 local DISABLED_FONT_COLOR        = _G.DISABLED_FONT_COLOR;
 local ERROR_COLOR                = _G.ERROR_COLOR;
 local WARNING_FONT_COLOR         = CreateColor(1, 0.5, 0, 1);
 local INACTIVE_COLOR             = _G.INACTIVE_COLOR;
 
-local dump                       = DebouncePrivate.dump;
 
-local _selectedTab               = 1;
-local _selectedSideTab           = 1;
+local DROPDOWNLIST1                     = "L_DropDownList1";
+local DROPDOWNLIST2                     = "L_DropDownList2";
+local UIDropDownMenu_GetCurrentDropDown = GenerateClosure(LibDD.UIDropDownMenu_GetCurrentDropDown, LibDD);
+local UIDropDownMenu_Initialize         = GenerateClosure(LibDD.UIDropDownMenu_Initialize, LibDD);
+local UIDropDownMenu_CreateInfo         = GenerateClosure(LibDD.UIDropDownMenu_CreateInfo, LibDD);
+local UIDropDownMenu_AddButton          = GenerateClosure(LibDD.UIDropDownMenu_AddButton, LibDD);
+local UIDropDownMenu_AddSeparator       = GenerateClosure(LibDD.UIDropDownMenu_AddSeparator, LibDD);
+local UIDropDownMenu_GetSelectedValue   = GenerateClosure(LibDD.UIDropDownMenu_GetSelectedValue, LibDD);
+local UIDropDownMenu_SetSelectedValue   = GenerateClosure(LibDD.UIDropDownMenu_SetSelectedValue, LibDD);
+local UIDropDownMenu_Refresh            = GenerateClosure(LibDD.UIDropDownMenu_Refresh, LibDD);
+local UIDropDownMenu_RefreshAll         = GenerateClosure(LibDD.UIDropDownMenu_RefreshAll, LibDD);
+local ToggleDropDownMenu                = GenerateClosure(LibDD.ToggleDropDownMenu, LibDD);
+local CloseDropDownMenus                = GenerateClosure(LibDD.CloseDropDownMenus, LibDD);
+local HideDropDownMenu                  = GenerateClosure(LibDD.HideDropDownMenu, LibDD);
+
+
+local luatype               = type;
+local dump                  = DebouncePrivate.dump;
+local GetBindingIssue       = DebouncePrivate.GetBindingIssue;
+local IsKeyInvalidForAction = DebouncePrivate.IsKeyInvalidForAction
+
+
+local _selectedTab          = 1;
+local _selectedSideTab      = 1;
 local _placeholder;
 local _draggingElement;
 local _pickedupInfo;
+local _newlyInsertedActions = {};
 
-local UNIT_FRAME_REACTIONS       = {
-	"HELP",
-	"HARM",
-	"OTHER",
-};
-
-local UNIT_FRAME_TYPES           = {
-	"PLAYER",
-	"PET",
-	"GROUP",
-	"TARGET",
-	"BOSS",
-	"ARENA",
-	"UNKNOWN",
-};
-
-local BINDING_TYPE_NAMES         = {
+local BINDING_TYPE_NAMES    = {
 	[Constants.SPELL] = LLL["TYPE_SPELL"],
 	[Constants.ITEM] = LLL["TYPE_ITEM"],
 	[Constants.MACRO] = LLL["TYPE_MACRO"],
@@ -52,12 +61,30 @@ local BINDING_TYPE_NAMES         = {
 	[Constants.COMMAND] = LLL["TYPE_COMMAND"],
 	[Constants.WORLDMARKER] = LLL["TYPE_WORLDMARKER"],
 	[Constants.SETCUSTOM] = LLL["TYPE_SETCUSTOM"],
+	[Constants.SETSTATE] = LLL["TYPE_SETSTATE"],
 	[Constants.UNUSED] = LLL["TYPE_UNUSED"],
 };
 
-local UNIT_INFOS                 = {
+local UNIT_FRAME_REACTIONS  = {
+	"HELP",
+	"HARM",
+	"OTHER",
+};
+
+local UNIT_FRAME_TYPES      = {
+	"PLAYER",
+	"PET",
+	"GROUP",
+	"TARGET",
+	"BOSS",
+	"ARENA",
+	"UNKNOWN",
+};
+
+local UNIT_INFOS            = {
 	player = {
 		name = LLL["UNIT_PLAYER"],
+		unitexists = false,
 	},
 	pet = {
 		name = LLL["UNIT_PET"],
@@ -104,6 +131,7 @@ local UNIT_INFOS                 = {
 		-- item = false,
 		tooltipTitle = LLL["UNIT_HOVER_DESC"],
 		tooltipWarning = DebouncePrivate.CliqueDetected and ERROR_COLOR:WrapTextInColorCode(LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"]) or nil,
+		unitexists = false,
 	},
 	none = {
 		name = LLL["UNIT_NONE"],
@@ -111,10 +139,11 @@ local UNIT_INFOS                 = {
 		target = false,
 		focus = false,
 		togglemenu = false,
+		unitexists = false,
 	},
 };
 
-local SORTED_UNIT_LIST           = {
+local SORTED_UNIT_LIST      = {
 	"player",
 	"pet",
 	"target",
@@ -130,7 +159,7 @@ local SORTED_UNIT_LIST           = {
 	"none"
 };
 
-local BLIZZARD_UNITFRAMES        = {
+local BLIZZARD_UNITFRAMES   = {
 	"player",
 	"pet",
 	"target",
@@ -141,54 +170,39 @@ local BLIZZARD_UNITFRAMES        = {
 };
 
 
-local GetActionBarTypeLabel;
-do
-	local _ACTION_BAR_LABELS;
-	function GetActionBarTypeLabel(index)
-		if (_ACTION_BAR_LABELS == nil) then
-			_ACTION_BAR_LABELS = {
-				[0] = LLL["DEFAULT"],
-				[5] = GetFlyoutInfo(229),
-				[11] = "[possessbar]",
-				[12] = "[vehicleui]",
-				[13] = "[shapeshift]",
-				[14] = "[overridebar]",
-			};
-			for i = 0, MAX_BONUS_ACTIONBAR_OFFSET do
-				_ACTION_BAR_LABELS[i] = format("[bonusbar:%d]", i);
-			end
-
-			if (PLAYER_CLASS == "DRUID") then
-				_ACTION_BAR_LABELS[1] = format("%s (%s)", _ACTION_BAR_LABELS[1], GetSpellInfo(768));
-				_ACTION_BAR_LABELS[3] = format("%s (%s)", _ACTION_BAR_LABELS[3], GetSpellInfo(5487));
-				_ACTION_BAR_LABELS[4] = format("%s (%s)", _ACTION_BAR_LABELS[4], GetSpellInfo(24858));
-			elseif (PLAYER_CLASS == "ROGUE") then
-				_ACTION_BAR_LABELS[1] = format("%s (%s)", _ACTION_BAR_LABELS[1], GetSpellInfo(1784));
-			end
-		end
-		return _ACTION_BAR_LABELS[index];
-	end
-end
-
-local DROPDOWNLIST1                     = "L_DropDownList1";
-local DROPDOWNLIST2                     = "L_DropDownList2";
-local UIDropDownMenu_GetCurrentDropDown = GenerateClosure(LibDD.UIDropDownMenu_GetCurrentDropDown, LibDD);
-local UIDropDownMenu_Initialize         = GenerateClosure(LibDD.UIDropDownMenu_Initialize, LibDD);
-local UIDropDownMenu_CreateInfo         = GenerateClosure(LibDD.UIDropDownMenu_CreateInfo, LibDD);
-local UIDropDownMenu_AddButton          = GenerateClosure(LibDD.UIDropDownMenu_AddButton, LibDD);
-local UIDropDownMenu_AddSeparator       = GenerateClosure(LibDD.UIDropDownMenu_AddSeparator, LibDD);
-local UIDropDownMenu_GetSelectedValue   = GenerateClosure(LibDD.UIDropDownMenu_GetSelectedValue, LibDD);
-local UIDropDownMenu_SetSelectedValue   = GenerateClosure(LibDD.UIDropDownMenu_SetSelectedValue, LibDD);
-local UIDropDownMenu_Refresh            = GenerateClosure(LibDD.UIDropDownMenu_Refresh, LibDD);
-local UIDropDownMenu_RefreshAll         = GenerateClosure(LibDD.UIDropDownMenu_RefreshAll, LibDD);
-local ToggleDropDownMenu                = GenerateClosure(LibDD.ToggleDropDownMenu, LibDD);
-local CloseDropDownMenus                = GenerateClosure(LibDD.CloseDropDownMenus, LibDD);
-local HideDropDownMenu                  = GenerateClosure(LibDD.HideDropDownMenu, LibDD);
-
-local Create_UIDropDownMenu             = function(name, parent)
+local Create_UIDropDownMenu = function(name, parent)
 	return LibDD:Create_UIDropDownMenu(name, parent);
 end
 
+
+
+local GetActionBarTypeLabel;
+do
+	local _bonusbarLabels;
+	function GetActionBarTypeLabel(index)
+		if (_bonusbarLabels == nil) then
+			_bonusbarLabels = {
+				[0] = LLL["DEFAULT"],
+				[5] = GetFlyoutInfo(229),
+			};
+			if (Constants.PLAYER_CLASS == "DRUID") then
+				_bonusbarLabels[1] = GetSpellInfo(768);
+				_bonusbarLabels[3] = GetSpellInfo(5487);
+				_bonusbarLabels[4] = GetSpellInfo(24858);
+			elseif (Constants.PLAYER_CLASS == "ROGUE") then
+				_bonusbarLabels[1] = GetSpellInfo(1784);
+			end
+			for i = 0, MAX_BONUS_ACTIONBAR_OFFSET do
+				local text = _bonusbarLabels[i];
+				_bonusbarLabels[i] = format("[bonusbar:%d]", i);
+				if (text) then
+					_bonusbarLabels[i] = format("%s (%s)", _bonusbarLabels[i], text);
+				end
+			end
+		end
+		return _bonusbarLabels[index];
+	end
+end
 
 local function GetLayerID(tab, sideTab)
 	tab = tab or _selectedTab;
@@ -264,6 +278,10 @@ local function IsDraggingElement(elementData)
 	end
 end
 
+local function GetDraggingElement()
+	return _draggingElement;
+end
+
 local function GetActionTypeAndValueFromCursorInfo()
 	local type, value;
 	local cursorType, cursorInfo1, _, cursorInfo3 = GetCursorInfo();
@@ -326,6 +344,18 @@ local function NameAndIconFromElementData(elementData)
 		actionName = LLL["TYPE_SETCUSTOM" .. value];
 		actionIcon = 1505950;
 		skipTypeName = true;
+	elseif (type == Constants.SETSTATE) then
+		local mode, stateIndex = DebouncePrivate.GetSetCustomStateModeAndIndex(value);
+
+		if (mode == "on") then
+			actionName = format(LLL["TYPE_SETSTATE_ON_NUM"], stateIndex);
+		elseif (mode == "off") then
+			actionName = format(LLL["TYPE_SETSTATE_OFF_NUM"], stateIndex);
+		elseif (mode == "toggle") then
+			actionName = format(LLL["TYPE_SETSTATE_TOGGLE_NUM"], stateIndex);
+		end
+		actionIcon = 254885;
+		skipTypeName = true;
 	elseif (type == Constants.COMMAND) then
 		actionName = _G["BINDING_NAME_" .. value] or value;
 		actionIcon = "A:NPE_Icon"
@@ -364,12 +394,12 @@ local function NameAndIconFromElementData(elementData)
 	return actionName, actionIcon or 134400;
 end
 
-local function ColoredNameAndIconFromElementData(elementData, ignoreDisabled)
+local function ColoredNameAndIconFromElementData(elementData)
 	local name, icon = NameAndIconFromElementData(elementData);
 	local action = elementData.action;
 	if (action.key == nil or DebouncePrivate.IsInactiveAction(action)) then
 		name = DISABLED_FONT_COLOR:WrapTextInColorCode(name);
-	elseif (DebouncePrivate.GetBindingIssue(action)) then
+	elseif (GetBindingIssue(action)) then
 		name = ERROR_COLOR:WrapTextInColorCode(name);
 	end
 	return name, icon;
@@ -394,10 +424,10 @@ local function DeleteElementData(elementData)
 	DebouncePrivate.UpdateBindings();
 end
 
-local ShowDeleteConfirmationPopup, HideDeleteConfirmationPopup, IsDeleteConfirmationPopupShown;
+local ShowDeleteConfirmationPopup, HideDeleteConfirmationPopup;
 do
 	local _deletePopupData;
-	function ShowDeleteConfirmationPopup(elementData, closePopups)
+	function ShowDeleteConfirmationPopup(elementData)
 		HideDeleteConfirmationPopup();
 
 		local function onAccept()
@@ -424,10 +454,6 @@ do
 			StaticPopup_Hide("GENERIC_CONFIRMATION", _deletePopupData);
 			_deletePopupData = nil;
 		end
-	end
-
-	function IsDeleteConfirmationPopupShown()
-		return StaticPopup_FindVisible("GENERIC_CONFIRMATION", _deletePopupData) ~= nil;
 	end
 end
 
@@ -474,6 +500,101 @@ do
 	end
 end
 
+local ShowInputBox, HideInputBox;
+do
+	local _shownInputBoxes = {};
+
+	function ShowInputBox(data)
+		_shownInputBoxes[data] = true;
+		StaticPopup_ShowCustomGenericInputBox(data);
+		if (data.currentValue) then
+			local popup = StaticPopup_FindVisible("GENERIC_INPUT_BOX", data);
+			if (popup) then
+				popup.editBox:SetText(data.currentValue);
+			end
+		end
+	end
+
+	function HideInputBox(data)
+		_shownInputBoxes[data] = nil;
+		StaticPopup_Hide("GENERIC_INPUT_BOX", data);
+	end
+
+	function HideAllInputBoxes()
+		for data in pairs(_shownInputBoxes) do
+			StaticPopup_Hide("GENERIC_INPUT_BOX", data);
+		end
+		wipe(_shownInputBoxes);
+	end
+end
+
+
+--[[
+TODO
+버튼 이름을 사용자가 임의로 지정하게 함으로써 애드온 외부에서도 사용 가능하게 할 수 있다
+/click DebounceKey ohshit  	
+/click DebounceKey iwin
+]]
+local ShowCustomButtonNameInputBox, HideCustomButtonNameInputBox;
+do
+	local _inputboxData;
+
+	function ShowCustomButtonNameInputBox(elementData)
+		-- _inputboxData = {
+		-- 	text = LLL["CUSTOM_BUTTON_NAME_POPUP_TEXT"],
+		-- 	callback = function(value)
+		-- 		elementData.action.buttonname = value;
+		-- 		DebouncePrivate.UpdateBindings();
+		-- 	end,
+		-- 	maxLetters = 10,
+		-- };
+		-- StaticPopup_ShowCustomGenericInputBox(_inputboxData);
+		-- local popup = StaticPopup_FindVisible("GENERIC_INPUT_BOX", _inputboxData);
+		-- if (popup) then
+		-- 	local currentValue = elementData.action.buttonname or "";
+		-- 	popup.editBox:SetText(currentValue)
+		-- end
+	end
+
+	function HideCustomButtonNameInputBox()
+		-- StaticPopup_Hide("GENERIC_INPUT_BOX", _inputboxData);
+	end
+end
+
+local ShowStateUpdateIntervalInputBox, HideStateUpdateIntervalInputBox;
+do
+	local _inputboxData = {
+		text = LLL["STATE_UPDATE_INTERVAL_POPUP_TEXT"],
+		callback = function(value)
+			value = tonumber(value);
+			if (not value or value < 0 or value > 0.2) then
+				DebouncePrivate.DisplayMessage(LLL["STATE_UPDATE_INTERVAL_INVALID_VALUE"], 1, 0, 0);
+				return;
+			end
+			if (value == 0.2) then
+				value = nil;
+			end
+			DebouncePrivate.Options.updatetime = value;
+			DebouncePrivate.UpdateBindings();
+		end,
+		maxLetters = 5,
+	};
+
+	function ShowStateUpdateIntervalInputBox()
+		StaticPopup_ShowCustomGenericInputBox(_inputboxData);
+		local popup = StaticPopup_FindVisible("GENERIC_INPUT_BOX", _inputboxData);
+		if (popup) then
+			local currentValue = DebouncePrivate.Options.updatetime or 0.2;
+			popup.editBox:SetText(currentValue)
+		end
+	end
+
+	function HideStateUpdateIntervalInputBox()
+		StaticPopup_Hide("GENERIC_INPUT_BOX", _inputboxData);
+	end
+end
+
+
 local function MoveAction(elementData, destLayerID, copying)
 	local fromLayerID = elementData.layer;
 	assert(fromLayerID == GetLayerID());
@@ -518,6 +639,10 @@ do
 	local LEFT_OFFSET = 10;
 	local action;
 
+	local function addErrorLine(message, wrap, leftOffset)
+		GameTooltip_AddErrorLine(GameTooltip, message, wrap or false, leftOffset or LEFT_OFFSET);
+	end
+
 	local function addLabelLine(label, hasError)
 		GameTooltip_AddBlankLineToTooltip(GameTooltip);
 		if (hasError) then
@@ -553,8 +678,10 @@ do
 		GameTooltip:SetMinimumWidth(140, true);
 
 		action = elementData.action;
-		local isInactive = DebouncePrivate.IsInactiveAction(action);
-		local hasIssues = not isInactive and DebouncePrivate.GetBindingIssue(action) ~= nil;
+		action._dirty = true;
+
+		local isInactive = not isOverview and DebouncePrivate.IsInactiveAction(action);
+		local hasIssues = GetBindingIssue(action) ~= nil;
 
 		local name = ColoredNameAndIconFromElementData(elementData);
 		GameTooltip_SetTitle(GameTooltip, name);
@@ -568,7 +695,7 @@ do
 				if (isInactive) then
 					keyText = INACTIVE_COLOR:WrapTextInColorCode(keyText);
 				else
-					error = hasIssues and DebouncePrivate.GetBindingIssue(action, "key") or nil;
+					error = hasIssues and GetBindingIssue(action, "key") or nil;
 				end
 				addValueLine(keyText, error);
 			else
@@ -578,7 +705,7 @@ do
 
 		if (action.unit ~= nil) then
 			addLabelLine(LLL["TARGET_UNIT"]);
-			local error = hasIssues and DebouncePrivate.GetBindingIssue(action, "unit");
+			local error = hasIssues and GetBindingIssue(action, "unit");
 			local unitStr = UNIT_INFOS[action.unit] and UNIT_INFOS[action.unit].name or LLL[action.unit];
 			addValueLine(unitStr, error);
 			if (action.unit ~= "" and action.unit ~= "none" and action.checkUnitExists) then
@@ -588,19 +715,21 @@ do
 
 		if (action.hover ~= nil) then
 			addLabelLine(LLL["UNIT_FRAMES"]);
-			local error = hasIssues and DebouncePrivate.GetBindingIssue(action, "hover");
+			local error = hasIssues and GetBindingIssue(action, "hover");
 			if (action.hover) then
 				wipe(_lines);
-				local reactions = action.reactions or Constants.HOVER_ALL;
+				local reactions = action.reactions or Constants.REACTION_ALL;
 				local frameTypes = action.frameTypes or Constants.FRAMETYPE_ALL;
 
 				local s;
-				if (reactions == Constants.HOVER_ALL) then
+				if (reactions == Constants.REACTION_ALL) then
 					s = LLL["ALL"];
+				elseif (reactions == 0) then
+					s = LLL["NOT_SELECTED"];
 				else
 					s = "";
 					for i = 1, #UNIT_FRAME_REACTIONS do
-						local flag = Constants["HOVER_" .. UNIT_FRAME_REACTIONS[i]];
+						local flag = Constants["REACTION_" .. UNIT_FRAME_REACTIONS[i]];
 						if (bit.band(reactions, flag) == flag) then
 							if (s ~= "") then
 								s = s .. ", ";
@@ -610,10 +739,13 @@ do
 					end
 				end
 				s = format("|cnWHITE_FONT_COLOR:%s:|r %s", LLL["REACTIONS"], s);
-				tinsert(_lines, s);
+				addValueLine(s, hasIssues and GetBindingIssue(action, "reactions") and true or false, true);
 
+				s = nil;
 				if (frameTypes == Constants.FRAMETYPE_ALL) then
 					s = LLL["ALL"];
+				elseif (frameTypes == 0) then
+					s = LLL["NOT_SELECTED"];
 				else
 					s = "";
 					for i = 1, #UNIT_FRAME_TYPES do
@@ -627,10 +759,12 @@ do
 					end
 				end
 				s = format("|cnWHITE_FONT_COLOR:%s:|r %s", LLL["FRAME_TYPES"], s);
-				tinsert(_lines, s);
-				addValueLines(_lines, error, true);
+				addValueLine(s, hasIssues and GetBindingIssue(action, "frameTypes") and true or false, true);
 			else
 				addValueLine(LLL["WHEN_NOT_HOVERED"], error);
+			end
+			if (error) then
+				addErrorLine(LLL["BINDING_ERROR_" .. error]);
 			end
 		end
 
@@ -638,7 +772,7 @@ do
 			addLabelLine(LLL["GROUP"]);
 
 			if (action.groups == 0) then
-				addValueLine(LLL["NOT_SELECTED"], true);
+				addValueLine(LLL["BINDING_ERROR_GROUPS_NONE_SELECTED"], true);
 			else
 				wipe(_lines);
 				for _, groupType in ipairs({ "NONE", "PARTY", "RAID" }) do
@@ -647,19 +781,19 @@ do
 						tinsert(_lines, LLL["GROUP_" .. groupType]);
 					end
 				end
-				local error = hasIssues and DebouncePrivate.GetBindingIssue(action, "groups");
+				local error = hasIssues and GetBindingIssue(action, "groups");
 				addValueLines(_lines, error);
 			end
 		end
 
 		if (action.combat ~= nil) then
 			addLabelLine(LLL["COMBAT"]);
-			local error = hasIssues and DebouncePrivate.GetBindingIssue(action, "combat");
+			local error = hasIssues and GetBindingIssue(action, "combat");
 			addValueLine(action.combat == true and LLL["IN_COMBAT"] or LLL["NOT_IN_COMBAT"], error);
 		end
 
 		if (action.stealth ~= nil) then
-			local error = hasIssues and DebouncePrivate.GetBindingIssue(action, "stealth");
+			local error = hasIssues and GetBindingIssue(action, "stealth");
 			addLabelLine(LLL["STEALTH"]);
 			addValueLine(action.stealth == true and LLL["STEALTHED"] or LLL["NOT_STEALTHED"], error);
 		end
@@ -667,10 +801,10 @@ do
 		if (action.forms ~= nil) then
 			addLabelLine(LLL["SHAPESHIFT"]);
 			if (action.forms == 0) then
-				addValueLine(LLL["NOT_SELECTED"], true);
+				addValueLine(LLL["BINDING_ERROR_FORMS_NONE_SELECTED"], true);
 			else
 				wipe(_lines);
-				local error = hasIssues and DebouncePrivate.GetBindingIssue(action, "forms");
+				local error = hasIssues and GetBindingIssue(action, "forms");
 				for i = 0, 10 do
 					local flag = 2 ^ i;
 					if (bit.band(action.forms, flag) ~= 0) then
@@ -692,13 +826,13 @@ do
 		end
 
 		if (action.bonusbars ~= nil) then
-			addLabelLine(LLL["ACTIONBARS"]);
+			addLabelLine(LLL["BONUSBAR"]);
 			if (action.bonusbars == 0) then
-				addValueLine(LLL["NOT_SELECTED"], true);
+				addValueLine(LLL["BINDING_ERROR_BONUSBARS_NONE_SELECTED"], true);
 			else
 				wipe(_lines);
-				local error = hasIssues and DebouncePrivate.GetBindingIssue(action, "bonusbars");
-				for i = 0, MAX_ACTIONBAR_TYPE_INDEX do
+				local error = hasIssues and GetBindingIssue(action, "bonusbars");
+				for i = 0, MAX_BONUS_ACTIONBAR_OFFSET do
 					local flag = 2 ^ i;
 					if (bit.band(action.bonusbars, flag) ~= 0) then
 						local label = GetActionBarTypeLabel(i);
@@ -711,10 +845,30 @@ do
 			end
 		end
 
+		if (action.specialbar ~= nil) then
+			local error = hasIssues and GetBindingIssue(action, "specialbar");
+			addLabelLine(LLL["SPECIALBAR"]);
+			addValueLine(action.specialbar == true and LLL["WITH_SPECIALBAR"] or LLL["WITHOUT_SPECIALBAR"], error);
+		end
+
+		if (action.extrabar ~= nil) then
+			local error = hasIssues and GetBindingIssue(action, "extrabar");
+			addLabelLine(LLL["EXTRABAR"]);
+			addValueLine(action.extrabar == true and LLL["EXTRABAR_PRESENT"] or LLL["EXTRABAR_NOT_PRESENT"], error);
+		end
+
 		if (action.petbattle ~= nil) then
-			local error = hasIssues and DebouncePrivate.GetBindingIssue(action, "petbattle");
+			local error = hasIssues and GetBindingIssue(action, "petbattle");
 			addLabelLine(LLL["PET_BATTLE"]);
 			addValueLine(action.petbattle == true and LLL["IN_PET_BATTLE"] or LLL["NOT_IN_PET_BATTLE"], error);
+		end
+
+		for stateIndex = 1, Constants.MAX_NUM_CUSTOM_STATES do
+			local state = "$state" .. stateIndex;
+			if (action[state] ~= nil) then
+				addLabelLine(format(LLL["CUSTOM_STATE_NUM"], stateIndex));
+				addValueLine(action[state] == true and LLL["WHEN_STATE_IS_ON"] or LLL["WHEN_STATE_IS_OFF"]);
+			end
 		end
 
 		if (action.priority and action.priority ~= Constants.DEFAULT_PRIORITY) then
@@ -746,11 +900,15 @@ end
 function DebounceLineMixin:Update()
 	local elementData = self:GetElementData();
 	local action = elementData.action;
+	action._dirty = true;
 
 	local isInactive = DebouncePrivate.IsInactiveAction(action);
-	local issue = not isInactive and DebouncePrivate.GetBindingIssue(action) or nil;
+	local issue = not isInactive and GetBindingIssue(action) or nil;
 
 	local name, icon = ColoredNameAndIconFromElementData(elementData);
+	if (DebouncePrivate.DEBUG) then
+		name = format("%s (%d)", name, elementData.index)
+	end
 	self.Name:SetText(name);
 
 	if (luatype(icon) == "string" and icon:sub(1, 2) == "A:") then
@@ -764,7 +922,7 @@ function DebounceLineMixin:Update()
 		local color;
 		if (isInactive) then
 			color = INACTIVE_COLOR;
-		elseif (issue and DebouncePrivate.GetBindingIssue(action, "key")) then
+		elseif (issue and GetBindingIssue(action, "key")) then
 			color = ERROR_COLOR;
 		end
 		if (color) then
@@ -780,7 +938,7 @@ function DebounceLineMixin:Update()
 		local color;
 		if (isInactive) then
 			color = INACTIVE_COLOR;
-		elseif (issue and DebouncePrivate.GetBindingIssue(action, "unit")) then
+		elseif (issue and GetBindingIssue(action, "unit")) then
 			color = ERROR_COLOR;
 		end
 		if (color) then
@@ -795,13 +953,15 @@ function DebounceLineMixin:Update()
 		if (isInactive) then
 			self.QuestionMark:SetVertexColor(INACTIVE_COLOR:GetRGBA());
 			self.QuestionMark:SetDesaturated(true);
-		elseif (issue and DebouncePrivate.GetBindingIssue(action,
-				"hover",
-				"groups",
-				"forms",
-				"bonusbars",
-				"combat",
-				"stealth")
+		elseif (issue and (GetBindingIssue(action, "hover")
+				or GetBindingIssue(action, "groups")
+				or GetBindingIssue(action, "forms")
+				or GetBindingIssue(action, "bonusbars")
+				or GetBindingIssue(action, "specialbar")
+				or GetBindingIssue(action, "combat")
+				or GetBindingIssue(action, "stealth")
+				or GetBindingIssue(action, "pet")
+				or GetBindingIssue(action, "petbattle"))
 			) then
 			self.QuestionMark:SetVertexColor(ERROR_COLOR:GetRGBA());
 			self.QuestionMark:SetDesaturated(false);
@@ -922,6 +1082,9 @@ end
 
 DebounceTabMixin = {};
 
+function DebounceTabMixin:OnLoad()
+end
+
 function DebounceTabMixin:OnClick()
 	local id = self:GetID();
 	if (_selectedTab ~= id) then
@@ -935,21 +1098,27 @@ function DebounceTabMixin:OnClick()
 end
 
 function DebounceTabMixin:OnEnter()
-	local currentTab = _selectedTab;
 	local id = self:GetID();
 	local text = GetTabLabel(id);
-
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
 	GameTooltip:SetText(text);
-	GameTooltip:Show();
 
-	if (id ~= currentTab and (IsDraggingElement() or GetActionTypeAndValueFromCursorInfo())) then
-		self:OnClick();
-	end
+	-- TODO add instruction line. "you can drop here to add/move into this tab"
+
+	GameTooltip:Show();
 end
 
 function DebounceTabMixin:OnLeave()
 	GameTooltip:Hide();
+end
+
+function DebounceTabMixin:OnReceiveDrag()
+	local layerID = GetLayerID(self:GetID(), _selectedSideTab);
+	DebounceFrame:OnReceiveDrag(layerID);
+end
+
+function DebounceTabMixin:IsActive()
+	return _selectedTab == self:GetID();
 end
 
 DebounceSideTabMixin = {};
@@ -964,6 +1133,7 @@ function DebounceSideTabMixin:OnClick()
 		PlaySound(SOUNDKIT.IG_ABILITY_PAGE_TURN);
 
 		_selectedSideTab = id;
+
 		DebounceFrame:UpdateSideTabs();
 		DebounceFrame:Refresh();
 	else
@@ -972,33 +1142,39 @@ function DebounceSideTabMixin:OnClick()
 end
 
 function DebounceSideTabMixin:OnEnter()
-	local currentTab = _selectedSideTab;
 	local id = self:GetID();
 	local text = GetSideTabaLabel(id);
-
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
 	if (self.isOffSpec) then
 		GameTooltip:SetText(format(LLL["INACTIVE_SPEC_LABEL"], text));
 	else
 		GameTooltip:SetText(text);
 	end
-	GameTooltip:Show();
 
-	if (id ~= currentTab and (IsDraggingElement() or GetActionTypeAndValueFromCursorInfo())) then
-		self:OnClick();
-	end
+	-- TODO add instruction line. "you can drop here to add/move into this tab"
+
+	GameTooltip:Show();
 end
 
 function DebounceSideTabMixin:OnLeave()
 	GameTooltip:Hide();
 end
 
+function DebounceSideTabMixin:OnDisable()
+	self:GetNormalTexture():SetDesaturated(true);
+end
+
 function DebounceSideTabMixin:OnEnable()
 	self:GetNormalTexture():SetDesaturated(self.isOffSpec);
 end
 
-function DebounceSideTabMixin:OnDisable()
-	self:GetNormalTexture():SetDesaturated(true);
+function DebounceSideTabMixin:OnReceiveDrag()
+	local layerID = GetLayerID(_selectedTab, self:GetID());
+	DebounceFrame:OnReceiveDrag(layerID);
+end
+
+function DebounceSideTabMixin:IsActive()
+	return _selectedSideTab == self:GetID();
 end
 
 DebounceFrameMixin = {};
@@ -1058,24 +1234,29 @@ function DebounceFrameMixin:UpdateSideTabs()
 		local tabID = tabOrders[i];
 		local tab = self.SideTabs[tabID];
 
-		local isOffSpec, shouldHide;
 		if (tabID == 2 and _selectedTab == 2) then
 			tab:Hide();
 		else
 			tab.isOffSpec = tabID > 2 and currentSpec ~= (tabID - 2);
 			tab:GetNormalTexture():SetDesaturated(tab.isOffSpec);
 			tab:SetChecked(_selectedSideTab == tabID);
+
 			if (prevTab) then
 				if (tab.isOffSpec and not prevTab.isOffSpec) then
-					tab:SetPoint("TOPLEFT", prevTab, "BOTTOMLEFT", 0, -40);
+					tab:SetPoint("TOP", prevTab, "BOTTOM", 0, -40);
 				else
-					tab:SetPoint("TOPLEFT", prevTab, "BOTTOMLEFT", 0, -17);
+					tab:SetPoint("TOP", prevTab, "BOTTOM", 0, -17);
 				end
 			end
+
 			tab:Show();
 			prevTab = tab;
 		end
 	end
+end
+
+function DebounceFrameMixin:GetPlaceholder()
+	return _placeholder;
 end
 
 do
@@ -1084,9 +1265,9 @@ do
 	local _lastScrollTime = 0;
 	local _lastCursorY = 0;
 
-	function DebounceFrameMixin:UpdatePlaceholderPosition()
+	function DebounceFrameMixin:UpdatePlaceholderPosition(forceNow)
 		local _, cursorY = GetScaledCursorPosition();
-		if ((GetTime() - _lastScrollTime) > SCROLL_DELAY or abs(cursorY - _lastCursorY) > ELEMENT_PADDING) then
+		if (forceNow or (GetTime() - _lastScrollTime) > SCROLL_DELAY or abs(cursorY - _lastCursorY) > ELEMENT_PADDING) then
 			_lastCursorY = cursorY;
 			local frames = self.ScrollBox:GetFrames();
 			local pos = 1;
@@ -1101,22 +1282,21 @@ do
 						end
 						if (frameElementData ~= _placeholder) then
 							if (_placeholder.sortIndex < frameElementData.index) then
-								pos = frameElementData.index + 1;
+								pos = frameElementData.index + 0.5;
 							else
-								pos = frameElementData.index;
+								pos = frameElementData.index - 0.5;
 							end
 							break;
 						end
 					else
 						if (frameElementData ~= _placeholder) then
-							pos = frameElementData.index + 1;
+							pos = frameElementData.index + 0.5;
 						end
 					end
 				end
 			end
 
-
-			pos = pos - 0.5;
+			-- pos = pos - 0.5;
 			if (not _placeholder.sortIndex or _placeholder.sortIndex ~= pos) then
 				_placeholder.sortIndex = pos;
 				self.dataProvider:Sort();
@@ -1141,65 +1321,51 @@ do
 end
 
 function DebounceFrameMixin:OnUpdate(elapsed)
-	local scrollBox = self.ScrollBox;
-	local isMouseOver = scrollBox:IsMouseOver();
+	if (not (IsDraggingElement() or GetActionTypeAndValueFromCursorInfo())) then
+		return;
+	end
 
-	if (IsDraggingElement()) then
-		if (isMouseOver) then
-			if (not _placeholder) then
-				_placeholder = _draggingElement;
+	local scrollBox = self.ScrollBox;
+	local isMouseOverScrollBox = scrollBox:IsMouseOver();
+	local draggingElement = GetDraggingElement();
+	local placeholderCreated;
+
+	if (isMouseOverScrollBox) then
+		if (not _placeholder) then
+			if (draggingElement) then
+				_placeholder = draggingElement;
 				_placeholder.sortIndex = _placeholder.sortIndex or _placeholder.index;
-				if (not self.dataProvider:FindIndex(_placeholder)) then
-					self.dataProvider:Insert(_placeholder);
-					if (self.dataProvider:GetSize() == 1) then
-						self:Update();
-					end
-				end
+			else
+				local type, value = GetActionTypeAndValueFromCursorInfo();
+				_placeholder = { action = { type = type, value = value }, sortIndex = scrollBox:GetDataIndexBegin() };
 			end
-		else
-			if (_placeholder) then
-				if (_placeholder.layer == GetLayerID()) then
-					_placeholder.sortIndex = _placeholder.index;
-					self.dataProvider:Sort();
-				else
-					self.dataProvider:Remove(_placeholder);
-					if (_placeholder) then
-						_placeholder.sortIndex = nil;
-						_placeholder = nil;
-					end
-					if (self.dataProvider:GetSize() == 0) then
-						self:Update();
-					end
-				end
+			if (not self.dataProvider:FindIndex(_placeholder)) then
+				self.dataProvider:Insert(_placeholder);
+				self:Update();
 			end
+			placeholderCreated = true;
 		end
 	else
-		local type, value = GetActionTypeAndValueFromCursorInfo();
-		if (not type) then
-			self:SetScript("OnUpdate", nil);
-			return;
-		end
-
-		if (isMouseOver) then
-			if (not _placeholder) then
-				_placeholder = { action = { type = type, value = value }, sortIndex = 0 };
-				self.dataProvider:Insert(_placeholder);
-				if (self.dataProvider:GetSize() == 1) then
+		if (_placeholder) then
+			if (_placeholder.layer == GetLayerID()) then
+				if (not self.dataProvider:FindIndex(_placeholder)) then
+					self.dataProvider:Insert(_placeholder);
 					self:Update();
 				end
-			end
-		else
-			if (_placeholder) then
+			else
 				self.dataProvider:Remove(_placeholder);
+				_placeholder.sortIndex = nil;
 				_placeholder = nil;
-				if (self.dataProvider:GetSize() == 0) then
-					self:Update();
-				end
+				self:Update();
 			end
 		end
 	end
 
-	if (_placeholder and isMouseOver) then
+	if (_placeholder and isMouseOverScrollBox) then
+		self:UpdatePlaceholderPosition(placeholderCreated);
+	end
+
+	if (_placeholder and isMouseOverScrollBox) then
 		self:UpdatePlaceholderPosition();
 	end
 end
@@ -1237,11 +1403,13 @@ end
 function DebounceFrameMixin:InitializeButtons()
 	self.AddButton:SetScript("OnClick", function(button)
 		HideDeleteConfirmationPopup();
+		HideCustomButtonNameInputBox();
 		ToggleDropDownMenu(1, "root", self.AddDropDown, "cursor", 20, 15);
 	end);
 
 	self.OptionsButton:SetScript("OnClick", function(button)
 		HideDeleteConfirmationPopup();
+		HideCustomButtonNameInputBox();
 		ToggleDropDownMenu(1, "root", self.OptionsDropDown, "cursor", 20, 15);
 	end);
 
@@ -1324,6 +1492,8 @@ function DebounceFrameMixin:OnHide()
 
 	HideSaveOrDiscardPopup();
 	HideDeleteConfirmationPopup();
+	HideStateUpdateIntervalInputBox();
+	HideCustomButtonNameInputBox();
 
 	if (self.iconDataProvider) ~= nil then
 		self.iconDataProvider:Release();
@@ -1439,14 +1609,22 @@ end
 
 function DebounceFrameMixin:Refresh(retainScrollPosition)
 	HideDeleteConfirmationPopup();
+	HideCustomButtonNameInputBox();
+
+	if (_placeholder) then
+		_placeholder.sortIndex = nil;
+		_placeholder = nil;
+	end
 
 	local dataProvider = CreateDataProvider();
 	local layerID = GetLayerID();
-	local layer = DebouncePrivate.GetProfileLayer(GetLayerID());
+	local layer = DebouncePrivate.GetProfileLayer(layerID);
+
 	for i, action in layer:Enumerate() do
 		local elementData;
-		if (_draggingElement and _draggingElement.layer == layerID and _draggingElement.action == action) then
-			elementData = _draggingElement;
+		local draggingElement = GetDraggingElement();
+		if (draggingElement and draggingElement.layer == layerID and draggingElement.action == action) then
+			elementData = draggingElement;
 			elementData.index = i;
 			elementData.sortIndex = i;
 		else
@@ -1573,6 +1751,14 @@ local function updateDropdownButtons()
 		end
 	elseif (L_UIDROPDOWNMENU_MENU_VALUE == "bonusbars") then
 	end
+
+	dump("dropdown", {
+		L_UIDROPDOWNMENU_MENU_VALUE = L_UIDROPDOWNMENU_MENU_VALUE,
+		L_UIDROPDOWNMENU_INIT_MENU = L_UIDROPDOWNMENU_INIT_MENU,
+		L_UIDROPDOWNMENU_MENU_LEVEL = L_UIDROPDOWNMENU_MENU_LEVEL,
+		L_UIDROPDOWNMENU_SHOW_TIME = L_UIDROPDOWNMENU_SHOW_TIME,
+		L_UIDROPDOWNMENU_OPEN_MENU = L_UIDROPDOWNMENU_OPEN_MENU,
+	})
 end
 
 local BuildCommandDropdownList;
@@ -1635,7 +1821,6 @@ do
 		end
 
 		commandList = sortedCategories;
-		dump("commandList", commandList)
 	end
 
 	function BuildCommandDropdownList(level, menuList)
@@ -1712,11 +1897,20 @@ function DebounceFrameMixin.AddDropDown_Initialize(self, level, menuList)
 			DebounceIconSelectorFrame:Show();
 		end
 		UIDropDownMenu_AddButton(info, level);
+		info.func = nil;
 
 		info.text = BINDING_TYPE_NAMES[Constants.SETCUSTOM];
 		info.menuList = "custom";
 		info.hasArrow = true;
 		UIDropDownMenu_AddButton(info, level);
+
+		info.text = BINDING_TYPE_NAMES[Constants.SETSTATE] .. LLL["_HAS_TOOLTIP_SUFFIX"];
+		info.menuList = Constants.SETSTATE;
+		info.value = nil;
+		info.hasArrow = true;
+		info.tooltipTitle = LLL["TYPE_SETSTATE_DESC"];
+		UIDropDownMenu_AddButton(info, level);
+		info.tooltipTitle = nil;
 
 		info.text = BINDING_TYPE_NAMES[Constants.WORLDMARKER];
 		info.menuList = "worldmarker";
@@ -1772,6 +1966,8 @@ function DebounceFrameMixin.AddDropDown_Initialize(self, level, menuList)
 			info.hasArrow = true;
 			UIDropDownMenu_AddButton(info, level);
 
+
+
 			info.text = BINDING_TYPE_NAMES[Constants.UNUSED] .. LLL["_HAS_TOOLTIP_SUFFIX"];
 			info.menuList = nil;
 			info.value = nil;
@@ -1806,9 +2002,63 @@ function DebounceFrameMixin.AddDropDown_Initialize(self, level, menuList)
 			end
 		end
 	end
+
+	if (menuList == Constants.SETSTATE) then
+		-- print("L_UIDROPDOWNMENU_MENU_VALUE",L_UIDROPDOWNMENU_MENU_VALUE)
+		if (luatype(L_UIDROPDOWNMENU_MENU_VALUE) ~= "number") then
+			for i = 1, Constants.MAX_NUM_CUSTOM_STATES do
+				info.menuList = Constants.SETSTATE;
+				info.text = format(LLL["CUSTOM_STATE_NUM"], i);
+				info.value = i;
+				info.notCheckable = 1;
+				info.hasArrow = true;
+				UIDropDownMenu_AddButton(info, level);
+			end
+			info.value = nil;
+		else
+			local stateIndex = L_UIDROPDOWNMENU_MENU_VALUE;
+
+			info.isTitle = true;
+			info.notCheckable = 1;
+			info.text = format(LLL["CUSTOM_STATE_NUM"], stateIndex);
+			UIDropDownMenu_AddButton(info, level);
+			info.isTitle = nil;
+			info.disabled = nil;
+
+			local callback = function(_, mode)
+				local value = bit.bor(mode, stateIndex);
+				DebounceFrame:AddNewAction(Constants.SETSTATE, value);
+				HideAnyDropDownMenu();
+			end
+
+			info.text = LLL["CUSTOM_STATE_TURN_ON"];
+			info.notCheckable = 1;
+			info.hasArrow = nil;
+			info.arg1 = Constants.SETCUSTOM_MODE_ON;
+			info.func = callback;
+			UIDropDownMenu_AddButton(info, level);
+
+
+			info.text = LLL["CUSTOM_STATE_TURN_OFF"];
+			info.notCheckable = 1;
+			info.hasArrow = nil;
+			info.arg1 = Constants.SETCUSTOM_MODE_OFF;
+			info.func = callback;
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["CUSTOM_STATE_TOGGLE"];
+			info.notCheckable = 1;
+			info.hasArrow = nil;
+			info.arg1 = Constants.SETCUSTOM_MODE_TOGGLE;
+			info.func = callback;
+			UIDropDownMenu_AddButton(info, level);
+		end
+	end
 end
 
 function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
+	local dropdown = self.AddDropDown;
+
 	local info = UIDropDownMenu_CreateInfo();
 	info.tooltipOnButton = 1;
 
@@ -1817,11 +2067,43 @@ function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
 		info.menuList = "blizzframes"
 		info.notCheckable = 1;
 		info.hasArrow = true;
-		info.tooltipTitle = "";
-		info.tooltipWarning = LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"];
+		if (DebouncePrivate.CliqueDetected) then
+			info.tooltipTitle = "";
+			info.tooltipWarning = LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"];
+		end
 		UIDropDownMenu_AddButton(info, level);
 		info.tooltipTitle = nil;
 		info.tooltipWarning = nil;
+
+		info.text = LLL["EXCLUDE_PLAYER"];
+		info.menuList = "excludePlayer";
+		info.notCheckable = 1;
+		info.hasArrow = true;
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["CUSTOM_STATES"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
+		info.menuList = "customStates";
+		info.notCheckable = 1;
+		info.hasArrow = true;
+		info.tooltipTitle = LLL["CUSTOM_STATES_DESC"];
+		info.tooltipText = LLL["CUSTOM_STATES_DESC2"];
+		info.tooltipWarning = LLL["CUSTOM_STATES_WARNING"];
+		UIDropDownMenu_AddButton(info, level);
+		info.tooltipTitle = nil;
+		info.tooltipText = nil;
+		info.tooltipWarning = nil;
+
+		info.text = LLL["STATE_UPDATE_INTERVAL"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
+		info.menuList = nil;
+		info.notCheckable = 1;
+		info.hasArrow = nil;
+		info.tooltipTitle = LLL["STATE_UPDATE_INTERVAL"];
+		info.tooltipText = LLL["STATE_UPDATE_INTERVAL_DESC"];
+		info.tooltipWarning = LLL["STATE_UPDATE_INTERVAL_WARNING"];
+		info.func = function()
+			ShowStateUpdateIntervalInputBox();
+		end
+		UIDropDownMenu_AddButton(info, level);
 	elseif (level == 2) then
 		if (menuList == "blizzframes") then
 			info.menuList = nil;
@@ -1847,18 +2129,6 @@ function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
 				end
 				UIDropDownMenu_AddButton(info, level);
 			end
-
-			-- info.text = "PlayerFrame"
-			-- info.checked = function() return DebouncePrivate.Options.blizzframes["PlayerFrame"] ~= false end
-			-- info.func = function(_, _, _, checked)
-			-- 	if (checked) then
-			-- 		DebouncePrivate.Options.blizzframes["PlayerFrame"] = nil;
-			-- 		DebouncePrivate.RegisterFrame(PlayerFrame)
-			-- 	else
-			-- 		DebouncePrivate.Options.blizzframes["PlayerFrame"] = false;
-			-- 		DebouncePrivate.UnregisterFrame(PlayerFrame)
-			-- 	end
-			-- end
 		end
 	elseif (level == 3) then
 		if (menuList == "types") then
@@ -1873,6 +2143,202 @@ function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
 			-- 	info.text = type;
 			-- 	UIDropDownMenu_AddButton(info, level);
 			-- end
+		end
+	end
+
+	if (menuList == "customStates") then
+		info.menuList = nil;
+		info.notCheckable = nil;
+		info.hasArrow = nil;
+		info.isNotRadio = true;
+		info.keepShownOnClick = true;
+		info.hasArrow = true;
+
+		for i = 1, Constants.MAX_NUM_CUSTOM_STATES do
+			info.menuList = "customState";
+			info.text = format(LLL["CUSTOM_STATE_NUM"], i);
+			info.value = i;
+			info.notCheckable = 1;
+			info.hasArrow = true;
+			UIDropDownMenu_AddButton(info, level);
+		end
+		info.value = nil;
+	elseif (menuList == "customState" or menuList == "customState_manual" or menuList == "customState_macro") then
+		local stateIndex = L_UIDROPDOWNMENU_MENU_VALUE;
+		local options = DebouncePrivate.GetCustomStateOptions(stateIndex);
+
+		if (menuList == "customState") then
+			info.isTitle = true;
+			info.notCheckable = 1;
+			info.text = format(LLL["CUSTOM_STATE_NUM"], stateIndex);
+			UIDropDownMenu_AddButton(info, level);
+			info.isTitle = nil;
+			info.disabled = nil;
+		end
+
+		info.menuList = nil;
+		info.notCheckable = nil;
+		info.hasArrow = nil;
+		info.isNotRadio = nil;
+		info.keepShownOnClick = true;
+		info.value = stateIndex;
+
+		if (menuList == "customState") then
+			local modes = { "MANUAL", "MACRO_CONDITIONAL" };
+			for _, modeKey in ipairs(modes) do
+				local mode = Constants.CUSTOM_STATE_MODES[modeKey];
+				info.text = LLL["CUSTOM_STATE_MODE_" .. modeKey];
+				info.checked = function() return options.mode == mode; end
+				if (mode == Constants.CUSTOM_STATE_MODES.MACRO_CONDITIONAL) then
+					info.hasArrow = true;
+					info.menuList = "customState_macro"
+				elseif (mode == Constants.CUSTOM_STATE_MODES.MANUAL) then
+					info.hasArrow = true;
+					info.menuList = "customState_manual"
+				end
+
+				info.func = function(_, _, _, checked)
+					options.mode = mode;
+					UIDropDownMenu_RefreshAll(L_UIDROPDOWNMENU_OPEN_MENU);
+					DebouncePrivate.UpdateBindings();
+				end
+				UIDropDownMenu_AddButton(info, level);
+			end
+
+			info.hasArrow = nil;
+			info.menuList = nil;
+
+			UIDropDownMenu_AddSeparator(level);
+
+			info.text = LLL["CUSTOM_STATE_DISPLAY_MESSAGE"];
+			info.isNotRadio = true;
+			info.notCheckable = nil;
+			info.checked = function() return options.displayMessage == true; end
+			info.func = function(_, _, _, checked)
+				options.displayMessage = checked or nil;
+			end
+			UIDropDownMenu_AddButton(info, level);
+		elseif (menuList == "customState_manual") then
+			info.isTitle = true;
+			info.notCheckable = 1;
+			info.text = "Current Value";
+			UIDropDownMenu_AddButton(info, level);
+			info.isTitle = nil;
+			info.disabled = nil;
+			info.notCheckable = nil;
+
+			info.isNotRadio = nil;
+			info.text = LLL["CUSTOM_STATE_ON"];
+			info.notCheckable = nil;
+			info.checked = function() return options.value == true; end
+			info.func = function(_, _, _, checked)
+				options.value = true;
+				UIDropDownMenu_Refresh(L_UIDROPDOWNMENU_OPEN_MENU);
+				if (options.mode == Constants.CUSTOM_STATE_MODES.MANUAL) then
+					DebouncePrivate.UpdateBindings();
+				end
+			end
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["CUSTOM_STATE_OFF"];
+			info.notCheckable = nil;
+			info.checked = function() return options.value == false; end
+			info.func = function(_, _, _, checked)
+				options.value = false;
+				UIDropDownMenu_Refresh(L_UIDROPDOWNMENU_OPEN_MENU);
+				if (options.mode == Constants.CUSTOM_STATE_MODES.MANUAL) then
+					DebouncePrivate.UpdateBindings();
+				end
+			end
+			UIDropDownMenu_AddButton(info, level);
+
+			info.isTitle = true;
+			info.notCheckable = 1;
+			info.text = LLL["Initial Value"];
+			UIDropDownMenu_AddButton(info, level);
+			info.isTitle = nil;
+			info.disabled = nil;
+			info.notCheckable = nil;
+
+			info.text = LLL["CUSTOM_STATE_LOGIN_ON"];
+			info.checked = function() return options.initialValue == true; end
+			info.func = function(_, _, _, checked)
+				options.initialValue = true;
+				UIDropDownMenu_Refresh(L_UIDROPDOWNMENU_OPEN_MENU);
+			end
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["CUSTOM_STATE_LOGIN_OFF"];
+			info.checked = function() return options.initialValue == false; end
+			info.func = function(_, _, _, checked)
+				options.initialValue = false;
+				UIDropDownMenu_Refresh(L_UIDROPDOWNMENU_OPEN_MENU);
+			end
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["CUSTOM_STATE_REMEMBER"];
+			info.checked = function() return options.initialValue == nil; end
+			info.func = function(_, _, _, checked)
+				options.initialValue = nil;
+				UIDropDownMenu_Refresh(L_UIDROPDOWNMENU_OPEN_MENU);
+			end
+			UIDropDownMenu_AddButton(info, level);
+		else
+			info.keepShownOnClick = nil;
+			info.notCheckable = 1;
+			info.text = LLL["CUSTOM_STATE_EDIT_VALUE"];
+			info.func = function()
+				ShowInputBox({
+					text = LLL["CUSTOM_STATE_EDIT_VALUE_DESC"],
+					--text_arg1 = format(LLL["CUSTOM_STATE_NUM"], stateIndex),
+					callback = function(value)
+						value = strtrim(value);
+						if (value == "") then
+							value = nil;
+						end
+						options.expr = value;
+						if (options.mode == Constants.CUSTOM_STATE_MODES.MACRO_CONDITIONAL) then
+							DebouncePrivate.UpdateBindings();
+						end
+					end,
+					maxLetters = 100,
+					currentValue = options.expr,
+				});
+			end
+			UIDropDownMenu_AddButton(info, level);
+			info.leftPadding = nil;
+		end
+	end
+
+	if (menuList == "excludePlayer") then
+		info.menuList = nil;
+		info.notCheckable = nil;
+		info.hasArrow = nil;
+		info.isNotRadio = true;
+		info.keepShownOnClick = true;
+
+		local aliases = { "tank", "healer", "maintank", "mainassist" };
+		for i, alias in ipairs(aliases) do
+			info.text = UNIT_INFOS[alias].name;
+			info.checked = function()
+				return DebouncePrivate.Options.excludePlayer and DebouncePrivate.Options.excludePlayer[alias];
+			end
+			info.func = function(_, _, _, checked)
+				if (checked) then
+					DebouncePrivate.Options.excludePlayer = DebouncePrivate.Options.excludePlayer or {};
+					DebouncePrivate.Options.excludePlayer[alias] = true;
+				else
+					if (DebouncePrivate.Options.excludePlayer) then
+						DebouncePrivate.Options.excludePlayer[alias] = nil;
+					end
+				end
+				-- TODO 여기서 변경할 것이 아니라 DebouncePrivate.ApplyOptions 같은 함수를 만들어야 할 것!!
+				local header = DebouncePrivate.GetUnitWatchHeader(alias);
+				if (header) then
+					header:SetAttribute("showPlayer", not checked);
+				end
+			end
+			UIDropDownMenu_AddButton(info, level);
 		end
 	end
 end
@@ -1914,12 +2380,13 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 			info.func = function()
 				local original = CopyTable(action);
 				if (DebouncePrivate.ConvertToMacroText(action)) then
+					action._dirty = true;
 					DebouncePrivate.UpdateBindings();
 					local cancelFunc = function()
 						wipe(elementData.action);
 						MergeTable(elementData.action, original);
+						action._dirty = true;
 						DebouncePrivate.UpdateBindings();
-						--DebounceFrame:Update();
 					end
 					DebounceMacroFrame:ShowEdit(elementData, cancelFunc);
 				end
@@ -1932,8 +2399,8 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 		info.disabled = action.key == nil;
 		info.func = function()
 			action.key = nil;
+			action._dirty = true;
 			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
 		end
 		UIDropDownMenu_AddButton(info, level);
 		info.disabled = nil;
@@ -1977,7 +2444,7 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 			info.notCheckable = 1;
 			info.menuList = "hover";
 			info.value = "hover";
-			info.tooltipTitle = LLL["UNIT_FRAMES"]
+			info.tooltipTitle = LLL["UNIT_FRAMES"];
 			info.tooltipText = LLL["HOVER_OVER_UNIT_FRAMES_DESC"];
 			if (DebouncePrivate.CliqueDetected) then
 				info.tooltipWarning = LLL["HOVER_OVER_UNIT_FRAMES_CLIQUE_WARNING"];
@@ -1988,6 +2455,11 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 			info.value = nil;
 		end
 
+		-- info.text = LLL["UNIT_EXISTS"];
+		-- info.hasArrow = true;
+		-- info.menuList = "unitexists";
+		-- UIDropDownMenu_AddButton(info, level);
+
 		info.text = LLL["GROUP"];
 		info.hasArrow = true;
 		info.menuList = "group";
@@ -1996,11 +2468,6 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 		info.text = LLL["COMBAT"];
 		info.hasArrow = true;
 		info.menuList = "combat";
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["STEALTH"];
-		info.hasArrow = true;
-		info.menuList = "stealth";
 		UIDropDownMenu_AddButton(info, level);
 
 		info.text = LLL["SHAPESHIFT"];
@@ -2013,30 +2480,10 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 		info.menuList = "actionbars";
 		UIDropDownMenu_AddButton(info, level);
 
-		info.text = LLL["PET"];
-		info.hasArrow = true;
-		info.menuList = "pet";
-		UIDropDownMenu_AddButton(info, level);
-
 		info.text = LLL["MISC"];
 		info.hasArrow = true;
 		info.menuList = "misc";
 		UIDropDownMenu_AddButton(info, level);
-
-		-- UIDropDownMenu_AddSeparator(level);
-
-		-- info.text = L["TALENT_LOADOUTS"];
-		-- info.hasArrow = true;
-		-- info.menuList = "loadouts";
-		-- UIDropDownMenu_AddButton(info, level);
-
-		-- info.text = "Custom Conditionals";
-		-- info.hasArrow = nil;
-		-- info.menuList = nil;
-		-- info.func = function()
-		-- 	print("show edit box")
-		-- end
-		-- UIDropDownMenu_AddButton(info, level);
 
 		UIDropDownMenu_AddSeparator(level);
 
@@ -2067,6 +2514,7 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 			info.hasArrow = nil;
 			info.menuList = nil;
 			info.notCheckable = nil;
+
 			if (action.type == Constants.TARGET or action.type == Constants.FOCUS or action.type == Constants.TOGGLEMENU) then
 
 			else
@@ -2074,8 +2522,8 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 				info.checked = action.unit == nil;
 				info.func = function()
 					action.unit = nil;
+					action._dirty = true;
 					DebouncePrivate.UpdateBindings();
-					--DebounceFrame:Update();
 				end
 				UIDropDownMenu_AddButton(info, level);
 			end
@@ -2088,8 +2536,8 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 					info.checked = action.unit == unit;
 					info.func = function()
 						action.unit = unit;
+						action._dirty = true;
 						DebouncePrivate.UpdateBindings();
-						--DebounceFrame:Update();
 					end
 					UIDropDownMenu_AddButton(info, level);
 				end
@@ -2172,18 +2620,19 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 			info.disabled = not action.hover;
 
 			for _, reaction in ipairs(UNIT_FRAME_REACTIONS) do
-				local flag = Constants["HOVER_" .. reaction];
+				local flag = Constants["REACTION_" .. reaction];
 				info.text = LLL["REACTION_" .. reaction];
-				info.checked = function() return bit.band(action.reactions or Constants.HOVER_ALL, flag) == flag end;
+				info.checked = function() return bit.band(action.reactions or Constants.REACTION_ALL, flag) == flag end;
 				info.func = function(_, _, _, checked)
 					if (checked) then
-						action.reactions = bit.bor(action.reactions or Constants.HOVER_ALL, flag);
+						action.reactions = bit.bor(action.reactions or Constants.REACTION_ALL, flag);
 					else
-						action.reactions = bit.band(action.reactions or Constants.HOVER_ALL, bit.bnot(flag));
+						action.reactions = bit.band(action.reactions or Constants.REACTION_ALL, bit.bnot(flag));
 					end
-					if (action.reactions == Constants.HOVER_ALL) then
+					if (action.reactions == Constants.REACTION_ALL) then
 						action.reactions = nil;
 					end
+					action._dirty = true;
 					DebouncePrivate.UpdateBindings();
 					UIDropDownMenu_Refresh(dropdown);
 					updateDropdownButtons();
@@ -2191,30 +2640,7 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 				UIDropDownMenu_AddButton(info, level);
 			end
 
-			-- for _, item in ipairs(REACTIONS) do
-			-- 	info.text = item[1];
-			-- 	info.checked = function() return bit.band(action.reactions or Constants.HOVER_ALL, item[2]) == item[2] end;
-			-- 	info.func = function(_, _, _, checked)
-			-- 		if (checked) then
-			-- 			action.reactions = bit.bor(action.reactions or Constants.HOVER_ALL, item[2]);
-			-- 		else
-			-- 			action.reactions = bit.band(action.reactions or Constants.HOVER_ALL, bit.bnot(item[2]));
-			-- 		end
-			-- 		if (action.reactions == Constants.HOVER_ALL) then
-			-- 			action.reactions = nil;
-			-- 		end
-			-- 		DebouncePrivate.UpdateBindings();
-			-- 		UIDropDownMenu_Refresh(dropdown);
-			-- 		updateDropdownButtons();
-			-- 	end
-			-- 	UIDropDownMenu_AddButton(info, level);
-			-- end
 			info.value = nil;
-
-			-- hover true help harm false nil
-			-- frameTypes nil (any)
-			--            0 none
-			--            flags ...
 
 			UIDropDownMenu_AddSeparator(level);
 
@@ -2248,8 +2674,9 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 					if (action.frameTypes == FRAMETYPE_MASK) then
 						action.frameTypes = nil;
 					end
-					UIDropDownMenu_Refresh(dropdown);
+					action._dirty = true;
 					DebouncePrivate.UpdateBindings();
+					UIDropDownMenu_Refresh(dropdown);
 					--DebounceFrame:Update();
 					updateDropdownButtons();
 				end
@@ -2405,110 +2832,45 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 			info.isNotRadio = nil;
 			info.keepShownOnClick = nil;
 		elseif (menuList == "actionbars") then
-			info.keepShownOnClick = true;
+			info.notCheckable = 1;
 
-			info.text = LLL["DISABLE"];
-			info.checked = function() return not action.bonusbars; end
-			info.func = function()
-				action.bonusbars = nil;
-				DebouncePrivate.UpdateBindings();
-				updateDropdownButtons();
-				--DebounceFrame:Update();
-				UIDropDownMenu_Refresh(dropdown);
-				UIDropDownMenu_RefreshAll(L_UIDROPDOWNMENU_OPEN_MENU);
-			end
+			info.text = LLL["BONUSBAR"];
+			info.hasArrow = true;
+			info.menuList = "bonusbars";
 			UIDropDownMenu_AddButton(info, level);
 
-			info.isNotRadio = true;
-
-			for i = 0, MAX_ACTIONBAR_TYPE_INDEX do
-				local flag = (2 ^ i);
-				local label = GetActionBarTypeLabel(i);
-				if (label) then
-					info.text = label;
-					info.checked = function() return action.bonusbars and bit.band(action.bonusbars, flag) == flag; end
-					info.func = function(_, _, _, checked)
-						if (checked) then
-							action.bonusbars = bit.bor(action.bonusbars or 0, flag);
-						else
-							action.bonusbars = bit.band(action.bonusbars or 0, bit.bnot(flag));
-						end
-						UIDropDownMenu_Refresh(dropdown);
-						UIDropDownMenu_RefreshAll(L_UIDROPDOWNMENU_OPEN_MENU);
-						DebouncePrivate.UpdateBindings();
-						--DebounceFrame:Update();
-						updateDropdownButtons();
-					end
-					UIDropDownMenu_AddButton(info, level);
-				end
-			end
-		elseif (menuList == "stealth") then
-			info.hasArrow = nil;
-			info.notCheckable = nil;
-			info.menuList = nil;
-
-			info.text = LLL["DISABLE"];
-			info.checked = action.stealth == nil;
-			info.func = function()
-				action.stealth = nil;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
+			info.text = LLL["SPECIALBAR"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
+			info.hasArrow = true;
+			info.menuList = "specialbar";
+			info.tooltipTitle = LLL["SPECIALBAR"];
+			info.tooltipText = LLL["SPECIALBAR_DESC"];
 			UIDropDownMenu_AddButton(info, level);
 
-			info.text = LLL["STEALTHED"];
-			info.checked = action.stealth == true;
-			info.func = function()
-				action.stealth = true;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["NOT_STEALTHED"];
-			info.checked = action.stealth == false;
-			info.func = function()
-				action.stealth = false;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-		elseif (menuList == "pet") then
-			info.hasArrow = nil;
-			info.notCheckable = nil;
-			info.menuList = nil;
-
-			info.text = LLL["DISABLE"];
-			info.checked = action.pet == nil;
-			info.func = function()
-				action.pet = nil;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["WITH_PET"];
-			info.checked = action.pet == true;
-			info.func = function()
-				action.pet = true;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["WITHOUT_PET"];
-			info.checked = action.pet == false;
-			info.func = function()
-				action.pet = false;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
+			info.text = LLL["EXTRABAR"];
+			info.hasArrow = true;
+			info.menuList = "extrabar";
 			UIDropDownMenu_AddButton(info, level);
 		elseif (menuList == "misc") then
+			info.notCheckable = 1;
+
+			info.text = LLL["STEALTH"];
+			info.hasArrow = true;
+			info.menuList = "stealth";
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["PET"];
+			info.hasArrow = true;
+			info.menuList = "pet";
+			UIDropDownMenu_AddButton(info, level);
+
 			info.text = LLL["PET_BATTLE"];
 			info.hasArrow = true;
 			info.menuList = "petbattle";
-			info.notCheckable = 1;
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["CUSTOM_STATES"];
+			info.hasArrow = true;
+			info.menuList = "customStates";
 			UIDropDownMenu_AddButton(info, level);
 		elseif (menuList == "priority") then
 			info.hasArrow = nil;
@@ -2678,11 +3040,261 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 			UIDropDownMenu_AddButton(info, level);
 		end
 	end
+
+	if (menuList == "customStates") then
+		info.notCheckable = 1;
+		for i = 1, Constants.MAX_NUM_CUSTOM_STATES do
+			info.text = format(LLL["CUSTOM_STATE_NUM"], i);
+			info.hasArrow = true;
+			info.menuList = "customState";
+			info.value = i;
+			UIDropDownMenu_AddButton(info, level);
+		end
+		info.value = nil;
+	elseif (menuList == "customState") then
+		local stateIndex = L_UIDROPDOWNMENU_MENU_VALUE;
+		local state = "$state" .. stateIndex;
+
+		info.text = format(LLL["CUSTOM_STATE_NUM"], stateIndex);
+		info.isTitle = true;
+		info.notCheckable = 1;
+		UIDropDownMenu_AddButton(info, level);
+		info.isTitle = nil;
+		info.disabled = nil;
+
+		info.hasArrow = nil;
+		info.notCheckable = nil;
+		info.menuList = nil;
+
+		info.text = LLL["DISABLE"];
+		info.checked = function() return action[state] == nil; end
+		info.func = function()
+			action[state] = nil;
+			DebouncePrivate.UpdateBindings();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["WHEN_STATE_IS_ON"];
+		info.checked = function() return action[state] == true; end
+		info.func = function()
+			action[state] = true;
+			DebouncePrivate.UpdateBindings();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["WHEN_STATE_IS_OFF"];
+		info.checked = function() return action[state] == false; end
+		info.func = function()
+			action[state] = false;
+			DebouncePrivate.UpdateBindings();
+		end
+		UIDropDownMenu_AddButton(info, level);
+	end
+
+	if (menuList == "unitexists") then
+		info.hasArrow = nil;
+		info.menuList = nil;
+		info.notCheckable = nil;
+		if (action.type == Constants.TARGET or action.type == Constants.FOCUS or action.type == Constants.TOGGLEMENU) then
+
+		else
+			info.text = LLL["UNIT_DISABLE"];
+			info.checked = action.checkUnitExists == nil;
+			info.func = function()
+				action.checkUnitExists = nil;
+				DebouncePrivate.UpdateBindings();
+				--DebounceFrame:Update();
+			end
+			UIDropDownMenu_AddButton(info, level);
+		end
+
+		for _, unit in ipairs(SORTED_UNIT_LIST) do
+			local unitInfo = UNIT_INFOS[unit];
+			if (unitInfo[menuList] ~= false) then
+				info.text = unitInfo.name .. (unitInfo.tooltipTitle and LLL["_HAS_TOOLTIP_SUFFIX"] or "");
+				info.tooltipTitle = unitInfo.tooltipTitle;
+				info.checked = action.checkUnitExists == unit;
+				info.func = function()
+					action.checkUnitExists = unit;
+					DebouncePrivate.UpdateBindings();
+					--DebounceFrame:Update();
+				end
+				UIDropDownMenu_AddButton(info, level);
+			end
+		end
+		info.tooltipTitle = nil;
+		info.tooltipInstruction = nil;
+		info.tooltipWarning = nil;
+		info.tooltipWhileDisabled = nil;
+	elseif (menuList == "stealth") then
+		info.hasArrow = nil;
+		info.notCheckable = nil;
+		info.menuList = nil;
+
+		info.text = LLL["DISABLE"];
+		info.checked = action.stealth == nil;
+		info.func = function()
+			action.stealth = nil;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["STEALTHED"];
+		info.checked = action.stealth == true;
+		info.func = function()
+			action.stealth = true;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["NOT_STEALTHED"];
+		info.checked = action.stealth == false;
+		info.func = function()
+			action.stealth = false;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+	elseif (menuList == "bonusbars") then
+		info.keepShownOnClick = true;
+
+		info.text = LLL["DISABLE"];
+		info.checked = function() return not action.bonusbars; end
+		info.func = function()
+			action.bonusbars = nil;
+			DebouncePrivate.UpdateBindings();
+			updateDropdownButtons();
+			--DebounceFrame:Update();
+			UIDropDownMenu_Refresh(dropdown);
+			UIDropDownMenu_RefreshAll(L_UIDROPDOWNMENU_OPEN_MENU);
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.isNotRadio = true;
+
+		for i = 0, MAX_BONUS_ACTIONBAR_OFFSET do
+			local flag = (2 ^ i);
+			local label = GetActionBarTypeLabel(i);
+			if (label) then
+				info.text = label;
+				info.checked = function() return action.bonusbars and bit.band(action.bonusbars, flag) == flag; end
+				info.func = function(_, _, _, checked)
+					if (checked) then
+						action.bonusbars = bit.bor(action.bonusbars or 0, flag);
+					else
+						action.bonusbars = bit.band(action.bonusbars or 0, bit.bnot(flag));
+					end
+					UIDropDownMenu_Refresh(dropdown);
+					UIDropDownMenu_RefreshAll(L_UIDROPDOWNMENU_OPEN_MENU);
+					DebouncePrivate.UpdateBindings();
+					--DebounceFrame:Update();
+					updateDropdownButtons();
+				end
+				UIDropDownMenu_AddButton(info, level);
+			end
+		end
+	elseif (menuList == "specialbar") then
+		info.hasArrow = nil;
+		info.notCheckable = nil;
+		info.menuList = nil;
+
+		info.text = LLL["DISABLE"];
+		info.checked = action.specialbar == nil;
+		info.func = function()
+			action.specialbar = nil;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["WITH_SPECIALBAR"];
+		info.checked = action.specialbar == true;
+		info.func = function()
+			action.specialbar = true;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["WITHOUT_SPECIALBAR"];
+		info.checked = action.specialbar == false;
+		info.func = function()
+			action.specialbar = false;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+	elseif (menuList == "extrabar") then
+		info.hasArrow = nil;
+		info.notCheckable = nil;
+		info.menuList = nil;
+
+		info.text = LLL["DISABLE"];
+		info.checked = action.extrabar == nil;
+		info.func = function()
+			action.extrabar = nil;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["EXTRABAR_PRESENT"];
+		info.checked = action.extrabar == true;
+		info.func = function()
+			action.extrabar = true;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["EXTRABAR_NOT_PRESENT"];
+		info.checked = action.extrabar == false;
+		info.func = function()
+			action.extrabar = false;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+	elseif (menuList == "pet") then
+		info.hasArrow = nil;
+		info.notCheckable = nil;
+		info.menuList = nil;
+
+		info.text = LLL["DISABLE"];
+		info.checked = action.pet == nil;
+		info.func = function()
+			action.pet = nil;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["WITH_PET"];
+		info.checked = action.pet == true;
+		info.func = function()
+			action.pet = true;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.text = LLL["WITHOUT_PET"];
+		info.checked = action.pet == false;
+		info.func = function()
+			action.pet = false;
+			DebouncePrivate.UpdateBindings();
+			--DebounceFrame:Update();
+		end
+		UIDropDownMenu_AddButton(info, level);
+	end
 end
 
 function DebounceFrameMixin:ShowEditDropdown(button, atButton)
 	DebounceKeybindFrame:Hide();
 	HideDeleteConfirmationPopup();
+	HideCustomButtonNameInputBox();
 	HideDropDownMenu(1);
 
 	local dropdown = self.EditDropDown;
@@ -2782,33 +3394,53 @@ function DebounceFrameMixin:CancelDragging(pickingUp)
 	self:SetScript("OnUpdate", nil);
 end
 
-function DebounceFrameMixin:OnReceiveDrag()
-	if (_placeholder) then
-		local newLayerID = GetLayerID();
-		if (_placeholder.layer) then
-			DebouncePrivate.GetProfileLayer(_placeholder.layer):Remove(_placeholder.action);
-		end
-		_placeholder.layer = newLayerID;
-		_placeholder.sortIndex = nil;
+function DebounceFrameMixin:CanReceiveDrag()
+	return IsDraggingElement() or GetActionTypeAndValueFromCursorInfo();
+end
 
-		local layer = DebouncePrivate.GetProfileLayer(newLayerID);
+function DebounceFrameMixin:OnReceiveDrag(destLayerID)
+	if (not self:CanReceiveDrag()) then
+		return;
+	end
+
+	local action, prevLayerID;
+	local draggingElement = GetDraggingElement();
+	if (draggingElement) then
+		action = draggingElement.action;
+		prevLayerID = draggingElement.layer;
+	else
+		local type, value = GetActionTypeAndValueFromCursorInfo();
+		action = { type = type, value = value };
+	end
+
+	local placeholder = _placeholder;
+	_placeholder = nil;
+
+	local currentLayerID = GetLayerID();
+	destLayerID = destLayerID or GetLayerID();
+	local destLayer = DebouncePrivate.GetProfileLayer(destLayerID);
+
+	if (prevLayerID) then
+		DebouncePrivate.GetProfileLayer(prevLayerID):Remove(action);
+	end
+
+	-- Inserting into the current ScrollBox.
+	if (destLayerID == currentLayerID and placeholder) then
 		for i, elementData in self.dataProvider:Enumerate() do
 			elementData.index = i;
-			if (elementData == _placeholder) then
-				layer:Insert(elementData.action, i);
+			if (placeholder == elementData) then
+				destLayer:Insert(action, i);
 			end
 		end
-		_placeholder = nil;
-		DebouncePrivate.UpdateBindings();
-
-		self:ClearMouse();
-		-- self:Update();
 	else
-		-- print("no _placeholder",GetCursorInfo())
-		-- if (GetCursorInfo()) then
-		-- 	self:ClearMouse();
-		-- end
+		destLayer:Insert(action, nil);
+		if (_newlyInsertedActions[destLayerID] == nil) then
+			_newlyInsertedActions[destLayerID] = action;
+		end
 	end
+	self:ClearMouse();
+	DebouncePrivate.UpdateBindings();
+	self:Refresh(true);
 end
 
 function DebounceFrameMixin:RefreshIconDataProvider()
@@ -2981,7 +3613,7 @@ function DebounceKeybindFrameMixin:Update()
 	local key = self.newKey or self.prevKey;
 
 	if (key) then
-		local issue = DebouncePrivate.IsKeyInvalidForAction(self.elementData.action, key);
+		local issue = IsKeyInvalidForAction(self.elementData.action, key);
 		if (issue) then
 			warningText = LLL["BINDING_ERROR_" .. issue];
 		elseif (issue) then
@@ -3001,7 +3633,6 @@ end
 DebounceIconSelectorFrameMixin = {};
 
 function DebounceIconSelectorFrameMixin:OnLoad()
-
 end
 
 function DebounceIconSelectorFrameMixin:OnShow()
@@ -3246,6 +3877,8 @@ function DebounceOverviewFrameMixin:OnLoad()
 		DebouncePrivate.db.global.overviewui.pos = { x = x, y = y };
 	end);
 
+	self:RegisterEvent("PLAYER_REGEN_ENABLED");
+
 	self:InitializeScrollBox();
 end
 
@@ -3262,7 +3895,12 @@ end
 function DebounceOverviewFrameMixin:OnHide()
 end
 
-function DebounceOverviewFrameMixin:OnEvent()
+function DebounceOverviewFrameMixin:OnEvent(event)
+	-- if (event == "PLAYER_REGEN_ENABLED") then
+	-- end
+	if (not InCombatLockdown()) then
+		self:SetPropagateKeyboardInput(true);
+	end
 end
 
 function DebounceOverviewFrameMixin:OnBindingsUpdated(...)
@@ -3483,9 +4121,13 @@ end
 function DebounceOverviewFrameMixin:OnKeyDown(input)
 	if (input == "ESCAPE") then
 		self:Hide();
-		self:SetPropagateKeyboardInput(false);
+		if (not InCombatLockdown()) then
+			self:SetPropagateKeyboardInput(false);
+		end
 	else
-		self:SetPropagateKeyboardInput(true);
+		if (not InCombatLockdown()) then
+			self:SetPropagateKeyboardInput(true);
+		end
 	end
 end
 

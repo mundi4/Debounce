@@ -1,83 +1,171 @@
 local _, DebouncePrivate = ...;
 local BindingDriver      = DebouncePrivate.BindingDriver;
+local Constants          = DebouncePrivate.Constants;
 
 local function applyConstants(str)
-    return str:gsub("CONSTANTS%.([_A-Za-z0-9]+)", function(m)
-        local value = DebouncePrivate.Constants[m];
-        assert(value ~= nil, m);
-        if (type(value) == "string") then
-            return format("%q", value);
-        else
-            return tostring(value);
-        end
-    end);
+	return str:gsub("CONSTANTS%.([_A-Za-z0-9]+)", function(m)
+		local value = Constants[m];
+		assert(value ~= nil, m);
+		if (type(value) == "string") then
+			return format("%q", value);
+		else
+			return tostring(value);
+		end
+	end);
 end
 
 function BindingDriver:print(...)
-    if (DebouncePrivate.DEBUG) then
-        print(GetTime(), ...)
-    end
+	if (DebouncePrivate.DEBUG) then
+		print(GetTime(), ...);
+	end
 end
 
 function BindingDriver:dump(name, ...)
-    DebouncePrivate.dump(name, { ... })
+	if (DebouncePrivate.DEBUG) then
+		DebouncePrivate.dump(name, { ... });
+	end
 end
 
-SecureHandlerSetFrameRef(BindingDriver, "clickDelegate", DebouncePrivate.ClickDelegate);
+SecureHandlerSetFrameRef(BindingDriver, "clickFrame", DebouncePrivate.DefaultClickFrame);
 SecureHandlerExecute(BindingDriver, [[
+	-- FALSE_VALUES = newtable()
+	-- FALSE_VALUES[0] = true
+	-- FALSE_VALUES["0"] = true
+	-- FALSE_VALUES[false] = true
+	-- FALSE_VALUES["false"] = true
+	-- FALSE_VALUES["FALSE"] = true
+	-- FALSE_VALUES["f"] = true
+	-- FALSE_VALUES["F"] = true
+	-- FALSE_VALUES["off"] = true
+	-- FALSE_VALUES["OFF"] = true
+
 	debounce_driver = self
 	ccframes = newtable()
-	
-	ClickAttrDefaultValues = newtable()
-	ClickButton = self:GetFrameRef("clickDelegate")
-	ClickButtonName = ClickButton:GetName()
-	ClickDelegates = newtable()
-	BindingsMap = newtable()
-	UnitBindingsMap = newtable()
-	UnitMap = newtable()
-	DirtyFlags = newtable()
-	States = newtable()
-	UnitStates = newtable()
 
-	deferUpdate = false
+	MacroMap = newtable()
+	ClickAttrDefaultValues = newtable()
+	
+	DefaultClickFrame = self:GetFrameRef("clickFrame")
+	DefaultClickFrameName = DefaultClickFrame:GetName()
+	
+	CustomStateExpressions = newtable()
+	BindingsMap = newtable()
+	MacroTextsMap = newtable()
+	UnitMap = newtable()
+	UnitStates = newtable()
+	States = newtable()
+	DirtyFlags = newtable()
+	HoverBindings = false
+	OldStates = newtable()
+
+	_macrotextsSeen = newtable()
+	_isUpdatingMacrotests = false
+	_customStatesUpdating = newtable()
 ]]);
 
-for _, frame in pairs(DebouncePrivate.SpecialUnitClickDelegateFrames) do
-    SecureHandlerSetFrameRef(BindingDriver, "clickDelegate", frame);
-    SecureHandlerExecute(BindingDriver, [[
-		local frame = self:GetFrameRef("clickDelegate")
-		local alias = frame:GetAttribute("alias")
-		ClickDelegates[alias] = frame
-		ClickDelegates[frame:GetName()] = frame
-	]]);
-end
+
+BindingDriver:SetAttribute("UpdateMacroTexts", [=[
+	--self:CallMethod("print", "UpdateMacroTexts", ...)
+
+	-- local wasUpdating = _isUpdatingMacrotests
+	-- if (not wasUpdating) then
+	-- 	_isUpdatingMacrotests = true
+	-- end
+
+	local key = ...
+	for state, dependents in pairs(MacroTextsMap) do
+		if (key == true or key == state or DirtyFlags[state]) then
+			for i = 1, #dependents do
+				local t = dependents[i]
+				--if (not _macrotextsSeen[t.id]) then
+					--_macrotextsSeen[t.id] = true
+					local s
+					if (t.fragments) then
+						for i = 1, #t.args do
+							local arg = t.args[i]
+							local value
+							if (arg.unit) then
+								value = UnitMap[arg.unit] or "raid41"
+							elseif (arg.state) then
+								value = States[arg.state] and true or false
+								if (arg.reverse) then
+									value = not value
+								end
+								value = value and "" or "known:0"
+							elseif (arg.fixed) then
+								value = arg.fixed
+							end
+							t.fragments[i * 2] = value
+						end
+						s = table.concat(t.fragments)
+					else
+						s = format(t.formatString,
+								UnitMap["tank"] or "raid41",
+								UnitMap["healer"] or "raid41",
+								UnitMap["maintank"] or "raid41",
+								UnitMap["mainassist"] or "raid41",
+								UnitMap["custom1"] or "raid41",
+								UnitMap["custom2"] or "raid41",
+								UnitMap["hover"] or "raid41")
+					end
+					if (t.attr) then
+						DefaultClickFrame:SetAttribute(t.attr, s)
+					end
+					if (t.state) then
+						if (true or CustomStateExpressions[t.state] ~= s) then
+							CustomStateExpressions[t.state] = s
+							local newValue = SecureCmdOptionParse(s) and true or false
+							if (States[t.state] ~= newValue) then
+								self:RunAttribute("SetCustomState", t.state, newValue)
+							end
+						end
+					end
+				--end
+			end
+		end
+	end
+
+	-- if (not wasUpdating) then
+	-- 	_isUpdatingMacrotests = false
+	-- 	wipe(_macrotextsSeen)
+	-- end
+]=]);
+
+BindingDriver:SetAttribute("SetCustomState", [[
+	local name, value = ...
+	if (States[name] ~= value) then
+		if (not _customStatesUpdating[name]) then
+			_customStatesUpdating[name] = true
+			
+			States[name] = value
+			DirtyFlags[name] = true
+			
+			if (MacroTextsMap[name]) then
+				self:RunAttribute("UpdateMacroTexts", name)
+			end
+
+			self:CallMethod("OnCustomStateChanged", name, value)
+			_customStatesUpdating[name] = false
+		end
+	end
+]]);
+
+BindingDriver:SetAttribute("ToggleCustomState", [[
+	local name = ...
+	local value = not States[name]
+	return self:RunAttribute("SetCustomState", name, not States[name])
+]]);
 
 BindingDriver:SetAttribute("SetUnit", [[
-	local alias, unit, force, skipUpdateBindings = ...
+	local alias, unit, force = ...
 	local changed = UnitMap[alias] ~= unit
 	local dirty = false
 	if (changed or force) then
 		UnitMap[alias] = unit
 
-		local delegateFrame = ClickDelegates[alias]
-		delegateFrame:SetAttribute("unit", unit or "raid41")
-
-		local bindings = UnitBindingsMap[alias]
-		if (bindings) then
-			for i = 1, #bindings do
-				local t = bindings[i]
-				if (t.macrotext) then
-					local s = format(t.macrotext,
-						UnitMap["tank"] or "raid41",
-						UnitMap["healer"] or "raid41",
-						UnitMap["maintank"] or "raid41",
-						UnitMap["mainassist"] or "raid41",
-						UnitMap["custom1"] or "raid41",
-						UnitMap["custom2"] or "raid41",
-						UnitMap["hover"] or "raid41")
-					ClickButton:SetAttribute(t.macrotextAttr, s)
-				end
-			end
+		local delegateFrame = DelegateFrames[alias]
+		if (delegateFrame) then
+			delegateFrame:SetAttribute("unit", unit or "raid41")
 		end
 
 		if (UnitStates[alias] ~= nil) then
@@ -102,6 +190,10 @@ BindingDriver:SetAttribute("SetUnit", [[
 			end
 		end
 
+		if (MacroTextsMap[alias]) then
+			self:RunAttribute("UpdateMacroTexts", alias)
+		end
+
 		if (not force) then
 			self:CallMethod("OnSpecialUnitChanged", alias, unit)
 		end
@@ -121,38 +213,46 @@ BindingDriver:SetAttribute("UpdateAllUnits", [[
 ]]);
 
 BindingDriver:SetAttribute("ClearUnitAttributes", [==[
-	-- for alias, bindings in pairs(UnitBindingsMap) do
-	-- 	for i = 1, #bindings do
-	-- 		local t = bindings[i]
-	-- 		if (t.unitAttr) then
-	-- 			(ClickDelegates[t.buttonframe] or ClickButton):SetAttribute(t.unitAttr, nil)
-	-- 		end
-	-- 	end
-	-- end
 ]==]);
 
-BindingDriver:SetAttribute("UpdateBindings", applyConstants([==[
-	if (deferUpdate) then return end
-
-	local forceAll = ...
-
-	local s = ""
-	for k in pairs(DirtyFlags) do
-		if (s:len() > 0) then
-			s = s .. ", "
-		end
-		s = s .. k
+BindingDriver:SetAttribute("UpdateBindings", (DebouncePrivate.DEBUG and [[
+	local vargs = newtable()
+	if (DirtyFlags.forceAll) then
+		tinsert(vargs, "forceAll")
 	end
-	self:CallMethod("dump", "UpdateBindings(secure)", forceAll, s)
-
-	local hover = States.hover
+	for k in pairs(DirtyFlags) do
+		if (k ~= "forceAll") then
+			tinsert(vargs, k)
+		end
+	end
+	self:CallMethod("dump", "[SECURE] UpdateBindings",
+		vargs[1],
+		vargs[2],
+		vargs[3],
+		vargs[4],
+		vargs[5],
+		vargs[6],
+		vargs[7],
+		vargs[9],
+		vargs[10],
+		vargs[11],
+		vargs[12],
+		vargs[13],
+		vargs[14],
+		vargs[15]
+	)
+]] or "") .. applyConstants([==[
+	local forceAll = DirtyFlags.forceAll
+	local unitframe = States.unitframe
 	local group = States.group
+	local form = 2 ^ (States.form or 0)
+	local bonusbar = 2 ^ (States.bonusbar or 0)
 	local combat = States.combat
-	local form = States.form
 	local stealth = States.stealth
-	local bonusbar = States.bonusbar
-	local petbattle = States.petbattle
+	local specialbar = States.specialbar
+	local extrabar = States.extrabar
 	local pet = States.pet
+	local petbattle = States.petbattle
 
 	for key, bindings in pairs(BindingsMap) do
 		local check = forceAll
@@ -173,15 +273,15 @@ BindingDriver:SetAttribute("UpdateBindings", applyConstants([==[
 
 				if (t.hover ~= nil) then
 					if (t.hover == false) then
-						if (hover) then
+						if (unitframe) then
 							match = false
 						end
-					elseif (not hover) then
+					elseif (not unitframe) then
 						match = false
 					else
-						if (t.reactions and ((t.reactions % (hover.reaction + hover.reaction)) < hover.reaction)) then
+						if (t.reactions and ((t.reactions % (unitframe.reaction + unitframe.reaction)) < unitframe.reaction)) then
 							match = false
-						elseif (t.frameTypes and ((t.frameTypes % (hover.frameType + hover.frameType)) < hover.frameType)) then
+						elseif (t.frameTypes and ((t.frameTypes % (unitframe.frameType + unitframe.frameType)) < unitframe.frameType)) then
 							match = false
 						end
 					end
@@ -192,6 +292,8 @@ BindingDriver:SetAttribute("UpdateBindings", applyConstants([==[
 					(t.combat ~= nil and t.combat ~= combat) or
 					(t.forms and (t.forms % (form + form)) < form) or
 					(t.bonusbars and (t.bonusbars % (bonusbar + bonusbar)) < bonusbar) or
+					(t.specialbar ~= nil and t.specialbar ~= specialbar) or
+					(t.extrabar ~= nil and t.extrabar ~= extrabar) or
 					(t.stealth ~= nil and t.stealth ~= stealth) or
 					(t.petbattle ~= nil and t.petbattle ~= petbattle) or
 					(t.pet ~= nil and t.pet ~= pet)
@@ -205,19 +307,28 @@ BindingDriver:SetAttribute("UpdateBindings", applyConstants([==[
 					end
 				end
 
+				if (match and t.customStates) then
+					for state, v in pairs(t.customStates) do
+						if (States[state] ~= v) then
+							match = false
+							break
+						end
+					end
+				end
+
 				if (match) then
-					if (not clickBound and hover and t.isClick) then
-						if (hover.clicks[key] ~= t) then
+					if (not clickBound and unitframe and t.isClick) then
+						if (unitframe.clicks[key] ~= t) then
 							if (t.type == CONSTANTS.UNUSED) then
 								for k, v in pairs(t.clickAttrs) do
-									hover.frame:SetAttribute(k, ClickAttrDefaultValues[hover.frame][k])
+									unitframe.frame:SetAttribute(k, ClickAttrDefaultValues[unitframe.frame][k])
 								end
 							else
 								for k, v in pairs(t.clickAttrs) do
-									hover.frame:SetAttribute(k, v)
+									unitframe.frame:SetAttribute(k, v or nil)
 								end
 							end
-							hover.clicks[key] = t
+							unitframe.clicks[key] = t
 						end
 						clickBound = t
 					end
@@ -229,8 +340,8 @@ BindingDriver:SetAttribute("UpdateBindings", applyConstants([==[
 								self:ClearBinding(key)
 							elseif (t.command) then
 								self:SetBinding(true, key, t.command)
-							else
-								self:SetBindingClick(true, key, ClickButtonName, t.id.."")
+							elseif (t.clickbutton) then
+								self:SetBindingClick(true, key, t.clickframe or DefaultClickFrameName, t.clickbutton)
 							end
 						end
 						keyBound = i
@@ -247,13 +358,13 @@ BindingDriver:SetAttribute("UpdateBindings", applyConstants([==[
 				self:ClearBinding(key)
 			end
 
-			if (hover and bindings.hasClick and not clickBound) then
-				local current = hover.clicks[key]
-				if (hover.clicks[key]) then
+			if (unitframe and bindings.hasClick and not clickBound) then
+				local current = unitframe.clicks[key]
+				if (unitframe.clicks[key]) then
 					for k, v in pairs(current.clickAttrs) do
-						hover.frame:SetAttribute(k, ClickAttrDefaultValues[hover.frame][k])
+						unitframe.frame:SetAttribute(k, ClickAttrDefaultValues[unitframe.frame][k])
 					end
-					hover.clicks[key] = nil
+					unitframe.clicks[key] = nil
 				end
 			end
 		end
@@ -297,9 +408,12 @@ BindingDriver:SetAttribute("InitFrame", [==[
 	if (not ClickAttrDefaultValues[button]) then
 		ClickAttrDefaultValues[button] = newtable()
 		for i = 1, 5 do
-			ClickAttrDefaultValues[button]["type"..i] = button:GetAttribute("*type"..i)
-			ClickAttrDefaultValues[button]["macro"..i] = button:GetAttribute("*macro"..i)
-			ClickAttrDefaultValues[button]["macrotext"..i] = button:GetAttribute("*macrotext"..i)
+			ClickAttrDefaultValues[button]["*type"..i] = button:GetAttribute("*type"..i)
+			ClickAttrDefaultValues[button]["*macro"..i] = button:GetAttribute("*macro"..i)
+			ClickAttrDefaultValues[button]["*macrotext"..i] = button:GetAttribute("*macrotext"..i)
+			ClickAttrDefaultValues[button]["type"..i] = button:GetAttribute("type"..i)
+			ClickAttrDefaultValues[button]["macro"..i] = button:GetAttribute("macro"..i)
+			ClickAttrDefaultValues[button]["macrotext"..i] = button:GetAttribute("macrotext"..i)
 		end
 	end
 ]==]);
@@ -309,11 +423,12 @@ BindingDriver:SetAttribute("DeinitFrame", [==[
 	debounce_driver:RunFor(button, debounce_driver:GetAttribute("ClearClickBindingsForButton"))
 	local info = ccframes[button]
 	if (info) then
-		if (info == States.hover) then
-			States.hover = nil
-			if (debounce_driver:RunAttribute("SetUnit", "hover", nil) or _hasHoverBinding) then
-				DirtyFlags.hover = true
-				debounce_driver:RunAttribute("UpdateBindings")
+		if (info == States.unitframe) then
+			States.unitframe = nil
+			if (debounce_driver:RunAttribute("SetUnit", "hover", nil) or HoverBindings) then
+				DirtyFlags.unitframe = true
+				debounce_driver:SetAttribute("state-unitexists", "unitframe")
+				--debounce_driver:RunAttribute("UpdateBindings")
 			end
 		end
 		info.frame = nil
@@ -339,48 +454,50 @@ BindingDriver:SetAttribute("setup_onenter", applyConstants([==[
 	local unit = self:GetEffectiveAttribute("unit")
     if (not unit) then return end
 
-	local hover = ccframes[self]
+	local unitframe = ccframes[self]
     local reaction
     if (PlayerCanAssist(unit)) then
-        reaction = CONSTANTS.HOVER_HELP
+        reaction = CONSTANTS.REACTION_HELP
     elseif (PlayerCanAttack(unit)) then
-        reaction = CONSTANTS.HOVER_HARM
+        reaction = CONSTANTS.REACTION_HARM
     else
-        reaction = CONSTANTS.HOVER_OTHER
+        reaction = CONSTANTS.REACTION_OTHER
     end
-    
-    local unitChanged = hover.unit ~= unit or hover.reaction ~= reaction
-	if (States.hover ~= hover or unitChanged) then
-        hover.unit = unit
-        hover.reaction = reaction
-		States.hover = hover
-        if (hover.insetL and not hover.l) then
+
+    local unitChanged = unitframe.unit ~= unit or unitframe.reaction ~= reaction
+	if (States.unitframe ~= unitframe or unitChanged) then
+        unitframe.unit = unit
+        unitframe.reaction = reaction
+		States.unitframe = unitframe
+        if (unitframe.insetL and not unitframe.l) then
             debounce_driver:RunFor(self, debounce_driver:GetAttribute("update_hit_bounds"))
         end
-		if (debounce_driver:RunAttribute("SetUnit", "hover", unit) or _hasHoverBinding) then
-			DirtyFlags.hover = true
-			debounce_driver:RunAttribute("UpdateBindings")
+		if (debounce_driver:RunAttribute("SetUnit", "hover", unit) or HoverBindings) then
+			DirtyFlags.unitframe = true
+			debounce_driver:SetAttribute("state-unitexists", "unitframe")
+			--debounce_driver:RunAttribute("UpdateBindings")
 		end
 	end
 ]==]));
 
 
 BindingDriver:SetAttribute("setup_onleave", [==[
-	local hover = States.hover
-	if (not hover) then return end
+	local unitframe = States.unitframe
+	if (not unitframe) then return end
 
-	if (hover.l) then
-		local x, y = hover.frame:GetMousePosition()
-		if (x and x >= hover.l and x <= hover.r and y >= hover.b and y <= hover.t) then
-			debounce_driver:SetAttribute("hovercheck", "?")
+	if (unitframe.l) then
+		local x, y = unitframe.frame:GetMousePosition()
+		if (x and x >= unitframe.l and x <= unitframe.r and y >= unitframe.b and y <= unitframe.t) then
+			--debounce_driver:SetAttribute("hovercheck", "?")
 			return
 		end
 	end
 
-	States.hover = nil
-	if (debounce_driver:RunAttribute("SetUnit", "hover", nil) or _hasHoverBinding) then
-		DirtyFlags.hover = true
-		debounce_driver:RunAttribute("UpdateBindings")
+	States.unitframe = nil
+	if (debounce_driver:RunAttribute("SetUnit", "hover", nil) or HoverBindings) then
+		DirtyFlags.unitframe = true
+		debounce_driver:SetAttribute("state-unitexists", "unitframe")
+		--debounce_driver:RunAttribute("UpdateBindings")
 	end
 ]==]);
 
@@ -393,27 +510,27 @@ BindingDriver:SetAttribute("clickcast_onleave", [==[
 ]==]);
 
 if (DebouncePrivate.CliqueDetected) then
-    SecureHandlerSetFrameRef(DebouncePrivate.BindingDriver, "clique_header", Clique.header);
+	SecureHandlerSetFrameRef(DebouncePrivate.BindingDriver, "clique_header", _G.Clique.header);
 
-    Clique.header:SetAttribute("debounce_gethoverunit", [[
+	_G.Clique.header:SetAttribute("debounce_gethoverunit", [[
 		return danglingButton and danglingButton:GetAttribute("unit") or nil
 	]]);
 
-    BindingDriver:SetAttribute("GetHoveredUnit", [==[
+	BindingDriver:SetAttribute("GetHoveredUnit", [==[
 		local clique_header = self:GetFrameRef("clique_header")
 		local unit = clique_header:RunAttribute("debounce_gethoverunit")
 		return unit
 	]==]);
 
-    BindingDriver:SetAttribute("clickcast_register", "");
+	BindingDriver:SetAttribute("clickcast_register", "");
 
-    BindingDriver:SetAttribute("clickcast_unregister", "");
+	BindingDriver:SetAttribute("clickcast_unregister", "");
 else
-    BindingDriver:SetAttribute("GetHoveredUnit", [==[
-		return States.hover and States.hover.unit or nil
+	BindingDriver:SetAttribute("GetHoveredUnit", [==[
+		return States.unitframe and States.unitframe.unit or nil
 	]==]);
 
-    BindingDriver:SetAttribute("clickcast_register", applyConstants([==[
+	BindingDriver:SetAttribute("clickcast_register", applyConstants([==[
 		local button = self:GetAttribute("clickcast_button")
 		if (ccframes[button]) then
 			return
@@ -432,7 +549,7 @@ else
 		self:CallMethod("OnClickCastRegister", button:GetName())
 	]==]));
 
-    BindingDriver:SetAttribute("clickcast_unregister", [==[
+	BindingDriver:SetAttribute("clickcast_unregister", [==[
 		local button = self:GetAttribute("clickcast_button")
 		if (ccframes[button]) then
 			self:RunFor(button, self:GetAttribute("DeinitFrame"))
@@ -445,118 +562,196 @@ else
 		end
 	]==]);
 
-    function BindingDriver:OnClickCastRegister(buttonName)
-        if (buttonName) then
-            local button = _G[buttonName];
-            if (button) then
-                DebouncePrivate.ccframes[button] = { hd = true, type = "group", frameType = DebouncePrivate.Constants.FRAMETYPE_GROUP };
-                DebouncePrivate.UpdateRegisteredClicks(button);
-            end
-        end
-    end
-
-    function BindingDriver:OnClickCastUnregister(buttonName)
-        if (buttonName) then
-            local button = _G[buttonName];
-            if (button and DebouncePrivate.ccframes[button] and DebouncePrivate.ccframes[button].hd) then
-                DebouncePrivate.ccframes[button] = nil;
-            end
-        end
-    end
-end
-
-BindingDriver:SetAttribute("_onattributechanged", applyConstants([[
-	if (name == "combat" or name == "form" or name == "stealth" or name == "bonusbar" or name == "group" or name == "pet" or name == "petbattle") then
-		if (name == "combat" or name == "stealth" or name == "pet" or name == "petbattle") then
-			value = value == 1 and true or false
-		elseif (name == "form" or name == "bonusbar") then
-			value = 2 ^ (value or 0)
-		elseif (name == "group") then
-			if (value == "party") then
-				value = CONSTANTS.GROUP_PARTY
-			elseif (value == "raid") then
-				value = CONSTANTS.GROUP_RAID
-			else
-				value = CONSTANTS.GROUP_NONE
-			end
-		end
-		if (States[name] ~= value) then
-			States[name] = value
-			DirtyFlags[name] = true
-			--self:RunAttribute("UpdateBindings")
-			self:SetAttribute("state-unitexists", nil)
-		end
-	elseif (name == "hovercheck") then
-		if (value == "?") then
-
-		elseif (States.hover) then
-			local hover = States.hover
-			local clear = not hover.frame:IsVisible()
-			if (not clear) then
-				if (hover.l) then
-					local x, y = hover.frame:GetMousePosition()
-					if (not x or (x < hover.l or x > hover.r or y < hover.b or y > hover.t)) then
-						clear = true
-					end
-				end
-			end
-
-			if (clear) then
-				States.hover = nil
-				if (self:RunAttribute("SetUnit", "hover", nil) or _hasHoverBinding) then
-					DirtyFlags.hover = true
-					self:SetAttribute("state-unitexists", nil)
-				end
-				return
-			end
-
-			if (value ~= 0) then
-				local unit = hover.frame:GetEffectiveAttribute("unit")
-				if (unit) then
-					local reaction
-					if (PlayerCanAssist(unit)) then
-						reaction = CONSTANTS.HOVER_HELP
-					elseif (PlayerCanAttack(unit)) then
-						reaction = CONSTANTS.HOVER_HARM
-					else
-						reaction = CONSTANTS.HOVER_OTHER
-					end
-					
-					if (hover.unit ~= unit or hover.reaction ~= reaction) then
-						hover.unit = unit
-						hover.reaction = reaction
-						if (self:RunAttribute("SetUnit", "hover", unit) or _hasHoverBinding) then
-							self:SetAttribute("state-unitexists", nil)
-						end
-					end
-				end
-			end
-
-			self:SetAttribute("hovercheck", "?")
-		end
-	elseif (name:sub(-7) == "-exists") then
-		value = value == 1;
-		local unit = name:sub(1, -8);
-		if (UnitStates[unit] ~= value) then
-			UnitStates[unit] = value
-			DirtyFlags[name] = true
-			self:SetAttribute("state-unitexists", nil)
-		end
-	elseif (name == "state-unitexists") then
-		if (value ~= nil) then
-			if (next(DirtyFlags) ~= nil) then
-				self:RunAttribute("UpdateBindings")
+	function BindingDriver:OnClickCastRegister(buttonName)
+		if (buttonName) then
+			local button = _G[buttonName];
+			if (button) then
+				DebouncePrivate.ccframes[button] = { hd = true, type = "group", frameType = DebouncePrivate.Constants.FRAMETYPE_GROUP };
+				DebouncePrivate.UpdateRegisteredClicks(button);
 			end
 		end
 	end
-]]));
+
+	function BindingDriver:OnClickCastUnregister(buttonName)
+		if (buttonName) then
+			local button = _G[buttonName];
+			if (button and DebouncePrivate.ccframes[button] and DebouncePrivate.ccframes[button].hd) then
+				DebouncePrivate.ccframes[button] = nil;
+			end
+		end
+	end
+end
 
 function BindingDriver:OnSpecialUnitChanged(alias, value)
 	DebouncePrivate.OnSpecialUnitChanged(alias, value);
 end
+
+function BindingDriver:OnCustomStateChanged(name, value)
+	DebouncePrivate.OnCustomStateChanged(name, value);
+end
+
 
 -- PossessActionBar? 5
 -- local vehicleBarPage = GetVehicleBarIndex(); -- 16
 -- local tempShapeshiftBarPage = GetTempShapeshiftBarIndex(); -- 17
 -- local overrideBarPage = GetOverrideBarIndex(); -- 18
 -- local currentBonusBarIndex = GetBonusBarIndex(); -- 0
+
+
+BindingDriver:SetAttribute("func1", [[
+	self:CallMethod("profile", "f1")
+	for i = 1, 1000 do
+		local v = SecureCmdOptionParse("[@player,exists]")
+	end
+	self:CallMethod("profile", "f1")
+]])
+
+BindingDriver:SetAttribute("func2", [[
+	self:CallMethod("profile", "f2")
+	for i = 1, 1000 do
+		local v = UnitExists("player")
+	end
+	self:CallMethod("profile", "f2")
+]])
+
+BindingDriver:SetAttribute("func3", [[
+	local t = newtable()
+	t.x = true
+	self:CallMethod("profile", "f3")
+	for i = 1, 1000 do
+		if (t.x) then
+			t.a = UnitExists("player")
+		end
+	end
+	self:CallMethod("profile", "f3")
+]])
+
+BindingDriver:SetAttribute("func4", [[
+	local t = newtable()
+	t.x = true
+	self:CallMethod("profile", "f3")
+	for i = 1, 1000 do
+		t.a = UnitExists("player")
+	end
+	self:CallMethod("profile", "f3")
+]])
+
+BindingDriver:SetAttribute("func5", [[
+	local states = newtable()
+	local t = newtable()
+	t.unit = "custom1"
+	states["custom1-exists"] = true
+	local match
+
+	self:CallMethod("profile", "f3")
+
+	for i = 1, 100000 do
+		local existsKey = t.unit.."-exists"
+		if (states[existsKey]) then
+			match=true
+		end
+	end
+
+	self:CallMethod("profile", "f3")
+]])
+
+BindingDriver:SetAttribute("func51", [[
+	local states = newtable()
+	local existsKeyCache = newtable()
+	local t = newtable()
+	t.unit = "custom1"
+	states["custom1-exists"] = true
+	local match
+
+	self:CallMethod("profile", "f3")
+
+	for i = 1, 100000 do
+		local existsKey = existsKeyCache[t.unit]
+		if (not existsKey) then
+			existsKey = t.unit.."-exists"
+			existsKeyCache[t.unit] = existsKey
+		end
+		if (states[existsKey]) then
+			match=true
+		end
+	end
+
+	self:CallMethod("profile", "f3")
+]])
+
+BindingDriver:SetAttribute("func6", [[
+	local states = newtable()
+	local t = newtable()
+	t.unit = "custom1"
+	t.checkUnitExists = "custom1"
+	states["custom1-exists"] = true
+	states["custom1"] = true
+	local match
+
+	self:CallMethod("profile", "f3")
+
+	for i = 1, 100000 do
+		if (states[t.unit]) then
+			match=true
+		end
+	end
+
+	self:CallMethod("profile", "f3")
+]])
+
+BindingDriver:SetAttribute("xxx", [[
+	local sum = 0
+	for i = 1, 100 do
+		sum = sum + i
+	end
+]])
+
+
+BindingDriver:SetAttribute("func7", [[
+	self:CallMethod("profile", "f7")
+	for i = 1, 1000 do
+		self:RunAttribute("xxx")
+	end
+	self:CallMethod("profile", "f7")
+]])
+
+BindingDriver:SetAttribute("func8", [[
+	self:CallMethod("profile", "f7")
+	for i = 1, 1000 do
+		local sum = 0
+		for i = 1, 100 do
+			sum = sum + i
+		end
+	end
+	self:CallMethod("profile", "f7")
+]])
+
+local _times = {};
+function BindingDriver:profile(name)
+	name = name or "";
+	local prev = _times[name];
+	local new = debugprofilestop();
+	if (prev) then
+		print("debugprofile ", name, " - ", new - prev);
+		_times[name] = nil;
+	else
+		_times[name] = new;
+	end
+end
+
+function Test1()
+	SecureHandlerExecute(BindingDriver, [[
+		self:RunAttribute("func1")
+	]])
+end
+
+function Test2()
+	SecureHandlerExecute(BindingDriver, [[
+		self:RunAttribute("func2")
+	]])
+end
+
+function Test(n)
+	SecureHandlerExecute(BindingDriver, format([[self:RunAttribute("func%d")]], n))
+end
+

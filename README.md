@@ -25,7 +25,7 @@ This addon is not meant to replace the default key bindings of WoW. Rather, it i
 2. Items
 3. Macros
 4. Mounts
-5. Macro Texts - **Macros that only work with this addon**. You can use target conditions with special units such as `@healer` or `@custom1` (Example: `/cast [@healer] Innervate`).
+5. Macro Texts - **Macros that only work within this addon**. You can use target conditions with special units such as `@healer` or `@custom1` (Example: `/cast [@healer] Innervate`).
 6. Binding Commands - the Bindings in WoW's default key bindings UI.
 7. and More
 
@@ -36,6 +36,8 @@ In addition to the ones that are supported by WoW, you can use special units, su
 
 #### Custom Targets
 You can set up to two custom targets that work similarly to the focus target. You can use the custom targets as the targets of your actions or in the **Macro Texts** with `@custom1` and `@custom2`. (Example: `/cast [@custom1,exists][] Rejuvenation`)
+
+**You can assign a custom target from these units: `player`, `pet`, `party1~4`, `raid1~40`, `boss1~8`, `arena1~5`**
 
 To assign a custom target, you should first add the *Set Custom Target* action and assign a key to it. Then, you can use that key to set the unit of the unit frame that you mouse over as a custom target. Alternatively, you can use this command: `/click DebounceCustom1 hover`.
 
@@ -66,7 +68,7 @@ Whether hovering over a unit frame or not. This condition also assigns the unit 
 
 
 ## Using Clique?
-If you use Clique and this addon at the same time, you will not be able to use some of the features of this addon (such as those related to unit frames). This addon includes some of Clique's features, but I don't know if it's necessary to replace Clique, a reliable addon that has been working well for a long time... You'll have to test it yourself.
+If you use Clique and this addon at the same time, you will not be able to use some of the features of this addon (such as those related to unit frames). This addon includes some of Clique's features, but I don't know if it's good enough to replace Clique, a reliable addon that has been working well for a long time... You'll have to test it yourself.
 
 
 ## I appreciate any help!

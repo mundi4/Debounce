@@ -1,10 +1,13 @@
-local _, DebouncePrivate         = ...;
-local LLL                        = DebouncePrivate.L;
-local BindingDriver              = DebouncePrivate.BindingDriver;
-local UnitWatch                  = CreateFrame("Frame", nil, nil, "SecureFrameTemplate,SecureHandlerAttributeTemplate");
+local _, DebouncePrivate              = ...;
+local Constants                       = DebouncePrivate.Constants;
+local CUSTOM_TARGET_VALID_UNIT_TOKENS = Constants.CUSTOM_TARGET_VALID_UNIT_TOKENS;
+local LLL                             = DebouncePrivate.L;
+local BindingDriver                   = DebouncePrivate.BindingDriver;
+local UnitWatch                       = CreateFrame("Frame", nil, nil, "SecureFrameTemplate,SecureHandlerAttributeTemplate");
 
-DebouncePrivate.UnitWatch        = UnitWatch;
-DebouncePrivate.UnitWatchHeaders = {};
+DebouncePrivate.UnitWatch             = UnitWatch;
+DebouncePrivate.UnitWatchHeaders      = {};
+
 
 SecureHandlerSetFrameRef(UnitWatch, "debounce_driver", BindingDriver);
 SecureHandlerExecute(UnitWatch, [=[
@@ -14,13 +17,12 @@ SecureHandlerExecute(UnitWatch, [=[
     ChildFrames = newtable()
     unitNames = newtable()
     unitMap = newtable()
-    VALID_UNIT_TOKENS = newtable()
+    CUSTOM_TARGET_VALID_UNIT_TOKENS = newtable()
 ]=]);
-
 do
     local tmp = {};
-    for k, v in pairs(DebouncePrivate.CUSTOM_TARGET_VALID_UNIT_TOKENS) do
-        tmp[#tmp + 1] = format("VALID_UNIT_TOKENS[%q]=%q", k, v);
+    for k, v in pairs(CUSTOM_TARGET_VALID_UNIT_TOKENS) do
+        tmp[#tmp + 1] = format("CUSTOM_TARGET_VALID_UNIT_TOKENS[%q]=%q", k, v);
     end
     SecureHandlerExecute(UnitWatch, table.concat(tmp, "\n"));
     tmp = nil;
@@ -78,7 +80,7 @@ end
 local CreateUnitWatchHeader;
 do
     local CheckUnits = [=[
-local alias, matchedUnit = %q
+local alias, matchedUnit, tooMany = %q
 local header = UnitwatchHeaders[alias]
 if (not header:IsShown()) then
     return
@@ -90,6 +92,7 @@ for i = 1, %d do
     if (unit) then
         if (matchedUnit) then
             matchedUnit = nil
+            tooMany = true
             break
         else
             matchedUnit = unit
@@ -104,6 +107,11 @@ if (unitMap[alias] ~= matchedUnit) then
     if (debounce_driver:RunAttribute("SetUnit", alias, matchedUnit)) then
         debounce_driver:RunAttribute("UpdateBindings")
     end
+    if (tooMany) then
+        unitwatch:CallMethod("OnSpecialUnitChanging", alias, false)
+    else
+        unitwatch:CallMethod("OnSpecialUnitChanging", alias, matchedUnit)
+    end
 end
 self:Show()
 ]=];
@@ -113,9 +121,16 @@ self:Show()
         DebouncePrivate.UnitWatchHeaders[alias] = header;
         header:Hide();
 
+        header:SetAttribute("alias", alias);
         header:SetAttribute("showParty", true);
         header:SetAttribute("showRaid", true);
-        header:SetAttribute("showPlayer", true);
+        if (strsub(alias, 1, 6) ~= "custom"
+                and DebouncePrivate.Options.excludePlayer
+                and DebouncePrivate.Options.excludePlayer[alias]) then
+            header:SetAttribute("showPlayer", false);
+        else
+            header:SetAttribute("showPlayer", true);
+        end
         header:SetAttribute("showSolo", true);
         header:SetAttribute("groupingOrder", "1,2,3,4,5,6,7,8");
         header:SetAttribute("sortMethod", "NAME");
@@ -182,13 +197,24 @@ end
 
 do
     local UNITWATCH_HEADER_PROPS = {
-        tank = { 2, "roleFilter", "TANK" },
-        healer = { 2, "roleFilter", "HEALER" },
-        maintank = { 2, "roleFilter", "MAINTANK" },
-        mainassist = { 2, "roleFilter", "MAINASSIST" },
+        tank = { 2, "roleFilter", "TANK", "showSolo", false },
+        healer = { 2, "roleFilter", "HEALER", "showSolo", false },
+        maintank = { 2, "roleFilter", "MAINTANK", "showSolo", false },
+        mainassist = { 2, "roleFilter", "MAINASSIST", "showSolo", false },
         custom1 = { 1, "nameList", "" },
         custom2 = { 1, "nameList", "" },
     };
+
+    function DebouncePrivate.GetUnitWatchHeader(alias, allowCreate)
+        local header = DebouncePrivate.UnitWatchHeaders[alias];
+        if (not header and allowCreate) then
+            if (not UNITWATCH_HEADER_PROPS[alias]) then
+                return;
+            end
+            header = CreateUnitWatchHeader(alias, unpack(UNITWATCH_HEADER_PROPS[alias]));
+        end
+        return header;
+    end
 
     function DebouncePrivate.EnableUnitWatch(unit, ...)
         local header = DebouncePrivate.UnitWatchHeaders[unit];
@@ -212,8 +238,10 @@ do
 
     function DebouncePrivate.DisableUnitWatch(unit, ...)
         local header = DebouncePrivate.UnitWatchHeaders[unit];
-        if (header) then
+        if (header and header:IsShown()) then
             header:Hide();
+            SecureHandlerExecute(UnitWatch, format("unitMap[%q] = nil", unit));
+            UnitWatch:OnSpecialUnitChanging(unit, nil);
         end
     end
 end
@@ -229,7 +257,7 @@ local function DoResolveUnitToken(value)
         return value;
     end
 
-    local unitType = DebouncePrivate.CUSTOM_TARGET_VALID_UNIT_TOKENS[value];
+    local unitType = CUSTOM_TARGET_VALID_UNIT_TOKENS[value];
     if (unitType) then
         return value, unitType;
     end
@@ -253,7 +281,7 @@ local function DoResolveUnitToken(value)
             end
         end
 
-        for i = 1, DebouncePrivate.Constants.MAX_BOSSES do
+        for i = 1, Constants.MAX_BOSSES do
             if (UnitIsUnit("boss" .. i, value)) then
                 return "boss" .. i, "boss";
             end
@@ -291,77 +319,110 @@ function UnitWatch:LoadCustomTargets()
     end
 end
 
-function UnitWatch:SaveCustomTargets()
-end
 
 do
     local _lastSeen = {};
     local _changedAliases = {};
+    local _sortedUnits = { "custom1", "custom2", "tank", "healer" };
 
     local function CustomTargetsChangedCallback()
-        for i = 1, 2 do
-            local alias = "custom" .. i;
+        for _, alias in ipairs(_sortedUnits) do
             local info = _changedAliases[alias];
             if (info) then
-                local value = DebouncePrivate.Units[alias];
-                local set = info.set;
-                local invalidating = info.invalidating;
-                local unitName, isVolatile, saveValue, guid;
+                if (alias == "custom1" or alias == "custom2") then
+                    local value = DebouncePrivate.Units[alias];
+                    local set = info.set;
+                    local invalidating = info.invalidating;
+                    local unitName, isVolatile, saveValue, guid;
 
-                if (value) then
-                    local unitType = DebouncePrivate.CUSTOM_TARGET_VALID_UNIT_TOKENS[value];
-                    unitName = DebouncePrivate.GetUnitFullName(value);
-                    guid = UnitGUID(value);
-                    if (unitType == "group") then
-                        isVolatile = not DebouncePrivate.UnitWatchHeaders[alias]:IsShown();
+                    if (value) then
+                        local unitType = CUSTOM_TARGET_VALID_UNIT_TOKENS[value];
+                        unitName = DebouncePrivate.GetUnitFullName(value);
+                        guid = UnitGUID(value);
+                        if (unitType == "group") then
+                            isVolatile = not DebouncePrivate.UnitWatchHeaders[alias]:IsShown();
+                            if (unitName) then
+                                saveValue = ":" .. unitName;
+                            end
+                        else
+                            saveValue = value;
+                        end
+                    elseif (DebouncePrivate.UnitWatchHeaders[alias]:IsShown()) then
+                        unitName = DebouncePrivate.UnitWatchHeaders[alias]:GetAttribute("nameList");
                         if (unitName) then
                             saveValue = ":" .. unitName;
                         end
-                    else
-                        saveValue = value;
                     end
-                elseif (DebouncePrivate.UnitWatchHeaders[alias]:IsShown()) then
-                    unitName = DebouncePrivate.UnitWatchHeaders[alias]:GetAttribute("nameList");
-                    if (unitName) then
-                        saveValue = ":" .. unitName;
-                    end
-                end
 
-                if (set or _lastSeen[alias] ~= guid) then
-                    _lastSeen[alias] = guid;
-                    if (value or unitName) then
-                        local color;
-                        if (value and UnitExists(value)) then
-                            if (UnitIsPlayer(value)) then
-                                local _, classFilename = UnitClass(value);
-                                color = GetClassColorObj(classFilename);
+                    DebouncePrivate.db.char.CustomTargets = DebouncePrivate.db.char.CustomTargets or {};
+                    DebouncePrivate.db.char.CustomTargets[alias] = saveValue;
+
+                    if (set or _lastSeen[alias] ~= guid) then
+                        _lastSeen[alias] = guid;
+                        if (value or unitName) then
+                            local color;
+                            if (value and UnitExists(value)) then
+                                if (UnitIsPlayer(value)) then
+                                    local _, classFilename = UnitClass(value);
+                                    color = GetClassColorObj(classFilename);
+                                else
+                                    color = CreateColor(UnitSelectionColor(value));
+                                end
                             else
-                                color = CreateColor(UnitSelectionColor(value));
+                                color = GRAY_FONT_COLOR;
                             end
+                            local colorCodedName = color:WrapTextInColorCode(unitName or value);
+                            if (isVolatile) then
+                                DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_SET_VOLATILE"], LLL["UNIT_" .. strupper(alias)], colorCodedName));
+                            else
+                                DebouncePrivate.DisplayMessage(format(LLL["SPECIAL_UNIT_SET_MESSAGE"], LLL["UNIT_" .. strupper(alias)], colorCodedName));
+                            end
+                        elseif (invalidating) then
+                            DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_INVALIDATED"], LLL["UNIT_" .. strupper(alias)]));
                         else
-                            color = GRAY_FONT_COLOR;
+                            DebouncePrivate.DisplayMessage(format(LLL["SPECIAL_UNIT_UNSET_MESSAGE"], LLL["UNIT_" .. strupper(alias)]));
                         end
-                        local colorCodedName = color:WrapTextInColorCode(unitName or value);
-                        if (isVolatile) then
-                            DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_SET_VOLATILE"], LLL["UNIT_"..strupper(alias)], colorCodedName));
+                    end
+                else
+                    local value = DebouncePrivate.Units[alias] or nil;
+                    local invalidating = info.invalidating;
+                    local unitName, guid;
+
+                    if (value) then
+                        unitName = DebouncePrivate.GetUnitFullName(value);
+                        guid = UnitGUID(value);
+                    end
+
+                    if (_lastSeen[alias] ~= guid) then
+                        _lastSeen[alias] = guid;
+                        if (value or unitName) then
+                            local color;
+                            if (value and UnitExists(value)) then
+                                if (UnitIsPlayer(value)) then
+                                    local _, classFilename = UnitClass(value);
+                                    color = GetClassColorObj(classFilename);
+                                else
+                                    color = CreateColor(UnitSelectionColor(value));
+                                end
+                            else
+                                color = GRAY_FONT_COLOR;
+                            end
+                            local colorCodedName = color:WrapTextInColorCode(unitName or value);
+                            DebouncePrivate.DisplayMessage(format(LLL["SPECIAL_UNIT_SET_MESSAGE"], LLL["UNIT_" .. strupper(alias)], colorCodedName));
+                        elseif (invalidating) then
+                            DebouncePrivate.DisplayMessage(format(LLL["SPECIAL_UNIT_UNSET_MESSAGE_TOO_MANY"], LLL["UNIT_" .. strupper(alias)]));
                         else
-                            DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_SET"], LLL["UNIT_"..strupper(alias)], colorCodedName));
+                            DebouncePrivate.DisplayMessage(format(LLL["SPECIAL_UNIT_UNSET_MESSAGE"], LLL["UNIT_" .. strupper(alias)]));
                         end
-                    elseif (invalidating) then
-                        DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_INVALIDATED"], LLL["UNIT_"..strupper(alias)]));
-                    else
-                        DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_UNSET"], LLL["UNIT_"..strupper(alias)]));
                     end
                 end
-
-                DebouncePrivate.db.char.CustomTargets = DebouncePrivate.db.char.CustomTargets or {};
-                DebouncePrivate.db.char.CustomTargets[alias] = saveValue;
             end
         end
+
         wipe(_changedAliases);
     end
 
-    function UnitWatch:OnSetCustomTarget(alias, value, set)
+    function UnitWatch:OnSpecialUnitChanging(alias, value, set)
         if (not next(_changedAliases)) then
             C_Timer.After(0, CustomTargetsChangedCallback);
         end
@@ -374,7 +435,7 @@ do
     function UnitWatch:OnSetCustomTargetFailed(alias, value, originalValue)
         local resolvedUnit, unitType = DoResolveUnitToken(value);
         if (resolvedUnit == false) then
-            DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_UNSUPPORTED_UNIT"], LLL["UNIT_"..strupper(alias)], DebouncePrivate.GetUnitFullName(value)));
+            DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_UNSUPPORTED_UNIT"], LLL["UNIT_" .. strupper(alias)], DebouncePrivate.GetUnitFullName(value)));
         else
             if (InCombatLockdown()) then
                 local helpMessage;
@@ -382,9 +443,9 @@ do
                     helpMessage = rawget(LLL, "CUSTOM_TARGET_HELP_MESSAGE_" .. unitType:upper());
                 end
                 helpMessage = helpMessage or "";
-                DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_UNSUPPORTED_UNIT_IN_COMBAT"], LLL["UNIT_"..strupper(alias)], value, helpMessage));
+                DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_UNSUPPORTED_UNIT_IN_COMBAT"], LLL["UNIT_" .. strupper(alias)], value, helpMessage));
             else
-                DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_FAILED"], LLL["UNIT_"..strupper(alias)], value));
+                DebouncePrivate.DisplayMessage(format(LLL["CUSTOM_TARGET_FAILED"], LLL["UNIT_" .. strupper(alias)], value));
             end
         end
     end
@@ -395,7 +456,7 @@ UnitWatch:SetAttribute("_onattributechanged", [==[
         for i = 1, 2 do
             local alias = "custom"..i
             local unit = unitMap[alias]
-            if (VALID_UNIT_TOKENS[unit] == "group") then
+            if (CUSTOM_TARGET_VALID_UNIT_TOKENS[unit] == "group") then
                 if (not UnitwatchHeaders[alias]:IsShown()) then
                     if (value) then
                         local unitName = unitNames[unit]
@@ -425,11 +486,10 @@ UnitWatch:SetAttribute("_onattributechanged", [==[
             unit = self:GetAttribute("resolvedUnit") or unit
 		end
 
-
         if (unit ~= unitMap[alias]) then
             if (unit) then
-                if (VALID_UNIT_TOKENS[unit]) then
-                    if (VALID_UNIT_TOKENS[unit] == "group") then
+                if (CUSTOM_TARGET_VALID_UNIT_TOKENS[unit]) then
+                    if (CUSTOM_TARGET_VALID_UNIT_TOKENS[unit] == "group") then
                         if (UnitExists(unit)) then
                             if (self:GetAttribute("grouproster_uptodate")) then
                                 nameList = unitNames[unit]
@@ -464,9 +524,9 @@ UnitWatch:SetAttribute("_onattributechanged", [==[
         end
 
         if (value == false) then
-            self:CallMethod("OnSetCustomTarget", alias, false)
+            self:CallMethod("OnSpecialUnitChanging", alias, false)
         else
-            self:CallMethod("OnSetCustomTarget", alias, unit, true)
+            self:CallMethod("OnSpecialUnitChanging", alias, unit, true)
         end
 	end
 ]==]);
@@ -488,7 +548,7 @@ UnitWatch:SetScript("OnEvent", function(_, event, arg1)
             for i = 1, 2 do
                 local alias = "custom" .. i;
                 if (DebouncePrivate.Units[alias] == "pet") then
-                    UnitWatch:OnSetCustomTarget(alias, "pet");
+                    UnitWatch:OnSpecialUnitChanging(alias, "pet");
                 end
             end
         end
@@ -496,8 +556,8 @@ UnitWatch:SetScript("OnEvent", function(_, event, arg1)
         for i = 1, 2 do
             local alias = "custom" .. i;
             local value = DebouncePrivate.Units[alias];
-            if (value and DebouncePrivate.CUSTOM_TARGET_VALID_UNIT_TOKENS[value] == "boss") then
-                UnitWatch:OnSetCustomTarget(alias, value);
+            if (value and CUSTOM_TARGET_VALID_UNIT_TOKENS[value] == "boss") then
+                UnitWatch:OnSpecialUnitChanging(alias, value);
             end
         end
     elseif (event == "ARENA_OPPONENT_UPDATE") then
@@ -505,13 +565,12 @@ UnitWatch:SetScript("OnEvent", function(_, event, arg1)
         for i = 1, 2 do
             local alias = "custom" .. i;
             if (DebouncePrivate.Units[alias] == value) then
-                UnitWatch:OnSetCustomTarget(alias, value);
+                UnitWatch:OnSpecialUnitChanging(alias, value);
             end
         end
     end
 end);
 UnitWatch:RegisterEvent("PLAYER_LOGIN");
-
 
 for i = 1, 2 do
     local button = CreateFrame("Button", "DebounceCustom" .. i, nil, "SecureActionButtonTemplate");
@@ -524,11 +583,4 @@ for i = 1, 2 do
         end
         unitwatch:SetAttribute(alias, value)
     ]==]);
-end
-
-
-do
-    local button = CreateFrame("Button", "DebounceTemp", nil, "SecureActionButtonTemplate");
-    button:SetAttribute("type-1", "target")
-    button:SetAttribute("unit-1", "player")
 end
