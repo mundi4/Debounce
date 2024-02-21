@@ -1,5 +1,6 @@
 local _, DebouncePrivate = ...
 local BindingDriver      = DebouncePrivate.BindingDriver;
+local Constants          = DebouncePrivate.Constants;
 local LLL                = DebouncePrivate.L;
 
 DebouncePublic           = {};
@@ -38,6 +39,7 @@ end
 
 local VALID_EVENTNAMES = {
 	UNIT_CHANGED = true,
+	STATE_CHANGED = true,
 };
 
 function DebouncePublic.RegisterCallback(target, eventname, method, ...)
@@ -114,7 +116,7 @@ if (_G.Grid2) then
 	local UnitGUID = UnitGUID;
 	local roster_units = Grid2.roster_units;
 
-	local aliases = { "custom1", "custom2", "hover" };
+	local aliases = { "custom1", "custom2", "hover", "tank", "healer", "maintank", "mainassist" };
 	for i = 1, #aliases do
 		local theAlias = aliases[i];
 		local statusKey = "debounce_" .. theAlias;

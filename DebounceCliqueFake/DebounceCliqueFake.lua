@@ -9,7 +9,7 @@ _G.ClickCastFrames = setmetatable({}, {
         if v == nil or v == false then
             DebouncePublic:UnregisterFrame(k);
         else
-            DebouncePublic:RegisterFrame(k);
+            DebouncePublic:RegisterFrame(k, v);
         end
     end
 });
