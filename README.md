@@ -2,6 +2,9 @@
 
 This is an addon for key bindings in World of Warcraft. It allows you to assign keys for different spells, items, macros and more.
 
+#### Download Links
+- [curseforge](https://www.curseforge.com/wow/addons/debounce)
+
 ### **This addon does not change any of the WoW's key bindings or settings. If you don't like the addon, you can just turn it off or delete it.**
 
 This addon is not meant to replace the default key bindings of WoW. Rather, it is designed to be used on top of the default key bindings. I personally use the default key bindings for simple keys that are common to all characters (such as movement keys, opening bags, etc.) with the character-specific key bindings turned off. For the rest of the keys that depend on the class, specialization, character, or situation, I use this addon to set them up.
