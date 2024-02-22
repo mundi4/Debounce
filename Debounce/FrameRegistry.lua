@@ -156,7 +156,9 @@ function DebouncePrivate.UpdateRegisteredClicks(button)
         return
     end
 
-    button:RegisterForClicks("AnyUp");
+    local trigger = DebouncePrivate.Options.unitframeUseMouseDown and "AnyDown" or "AnyUp";
+    button:RegisterForClicks(trigger);
+    
     button:EnableMouseWheel(true);
 end
 

@@ -1280,7 +1280,13 @@ function DebouncePrivate.DisplayMessage(message, r, g, b)
     end
 end
 
-function DebouncePrivate.ApplyOptions()
-    -- UI 코드에서 옵션을 적용하는 건 느낌이 좋지 않아...
-    -- 귀찮다. 나중에...
+function DebouncePrivate.ApplyOptions(option)
+    if (option == "unitframeUseMouseDown") then
+        if (not DebouncePrivate.CliqueDetected) then
+            local trigger = DebouncePrivate.Options.unitframeUseMouseDown and "AnyDown" or "AnyUp";
+            for frame in pairs(DebouncePrivate.ccframes) do
+                frame:RegisterForClicks(trigger);
+            end
+        end
+    end
 end

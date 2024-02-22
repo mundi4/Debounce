@@ -20,8 +20,10 @@ local format, tostring                   = format, tostring;
 local wipe, ipairs, pairs, tinsert, sort = wipe, ipairs, pairs, tinsert, sort;
 local band, bor, bnot                    = bit.band, bit.bor, bit.bnot;
 local InCombatLockdown                   = InCombatLockdown;
+local FindBaseSpellByID                  = FindBaseSpellByID;
 local GetSpellInfo                       = GetSpellInfo;
 local GetSpellSubtext                    = GetSpellSubtext;
+local IsPressHoldReleaseSpell            = IsPressHoldReleaseSpell;
 local GetMountInfoByID                   = C_MountJournal.GetMountInfoByID;
 
 local BindingAttrsCache                  = {};
@@ -356,6 +358,8 @@ function SetBindingAttributes(type, value, unit, buttonname)
             -- id는 다르지만 이름은 같은 주문들이 있다.
             -- 예: 조화 전문화의 달빛야수 변신과 회복 전문화의 달빛야수 변신
             -- id로 바인딩하는 경우 다른 전문화의 주문은 실행되지 않음.
+
+
             clickframe:SetAttribute("*type-" .. buttonname, "spell");
             local spellID = FindBaseSpellByID(value) or value;
             local spellName = GetSpellInfo(spellID);
@@ -368,6 +372,14 @@ function SetBindingAttributes(type, value, unit, buttonname)
             else
                 clickframe:SetAttribute("*spell-" .. buttonname, spellID);
             end
+            
+            -- what if 'IsPressHoldReleaseSpell' value is changed by a talent or something? is there a such situation?
+            local isPressAndHold = IsPressHoldReleaseSpell(value);
+            if (isPressAndHold) then
+                clickframe:SetAttribute("*typerelease-" .. buttonname, "spell");
+                clickframe:SetAttribute("*pressAndHoldAction-"..buttonname, true);
+            end
+            
         elseif (type == Constants.ITEM) then
             value = format("item:%d", value);
             clickframe:SetAttribute("*type-" .. buttonname, "item");
@@ -839,7 +851,7 @@ self:SetAttribute("state-unitexists", 0)
         elseif (_customStates[state]) then
             -- handle later
         elseif (DEBUG) then
-            print("Unhandled State: ".. state);
+            print("Unhandled State: " .. state);
         end
     end
 
@@ -890,3 +902,4 @@ end
     end
     wipe(_strArr);
 end
+

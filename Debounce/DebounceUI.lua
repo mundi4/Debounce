@@ -2063,17 +2063,13 @@ function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
 	info.tooltipOnButton = 1;
 
 	if (level == 1) then
-		info.text = LLL["BLIZZARD_UNIT_FRAMES"];
-		info.menuList = "blizzframes"
+		info.text = LLL["UNITFRAME_OPTIONS"];
+		info.menuList = "unitframe";
 		info.notCheckable = 1;
 		info.hasArrow = true;
-		if (DebouncePrivate.CliqueDetected) then
-			info.tooltipTitle = "";
-			info.tooltipWarning = LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"];
-		end
 		UIDropDownMenu_AddButton(info, level);
-		info.tooltipTitle = nil;
-		info.tooltipWarning = nil;
+
+
 
 		info.text = LLL["EXCLUDE_PLAYER"];
 		info.menuList = "excludePlayer";
@@ -2105,31 +2101,6 @@ function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
 		end
 		UIDropDownMenu_AddButton(info, level);
 	elseif (level == 2) then
-		if (menuList == "blizzframes") then
-			info.menuList = nil;
-			info.notCheckable = nil;
-			info.hasArrow = nil;
-			info.isNotRadio = true;
-			info.keepShownOnClick = true;
-
-			for i, frameType in ipairs(BLIZZARD_UNITFRAMES) do
-				info.text = LLL["BLIZZARD_UNIT_FRAMES_" .. strupper(frameType)];
-				info.checked = function()
-					return DebouncePrivate.Options.blizzframes[frameType] ~= false
-				end
-				info.func = function(_, _, _, checked)
-					local val;
-					if (checked) then
-						val = nil;
-					else
-						val = false;
-					end
-					DebouncePrivate.Options.blizzframes[frameType] = val;
-					DebouncePrivate.UpdateBlizzardFrames();
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-		end
 	elseif (level == 3) then
 		if (menuList == "types") then
 			-- print("L_UIDROPDOWNMENU_MENU_VALUE", L_UIDROPDOWNMENU_MENU_VALUE)
@@ -2143,6 +2114,66 @@ function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
 			-- 	info.text = type;
 			-- 	UIDropDownMenu_AddButton(info, level);
 			-- end
+		end
+	end
+
+	if (menuList == "unitframe") then
+		info.menuList = nil;
+		info.notCheckable = nil;
+		info.hasArrow = nil;
+		info.isNotRadio = true;
+		info.keepShownOnClick = true;
+		info.text = LLL["UNITFRAME_TRIGGER_ON_MOUSE_DOWN"];
+		info.tooltipTitle = LLL["UNITFRAME_TRIGGER_ON_MOUSE_DOWN_DESC"];
+		info.checked = function() return DebouncePrivate.Options.unitframeUseMouseDown end
+		info.func = function(_, _, _, checked)
+			DebouncePrivate.Options.unitframeUseMouseDown = checked or nil;
+			DebouncePrivate.ApplyOptions("unitframeUseMouseDown");
+		end
+		if (DebouncePrivate.CliqueDetected) then
+			info.tooltipWarning = LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"];
+		end
+		UIDropDownMenu_AddButton(info, level);
+
+		info.tooltipTitle = nil;
+		info.tooltipWarning = nil;
+		
+		info.text = LLL["BLIZZARD_UNIT_FRAMES"];
+		info.menuList = "blizzframes"
+		info.notCheckable = 1;
+		info.hasArrow = true;
+		if (DebouncePrivate.CliqueDetected) then
+			info.tooltipTitle = "";
+			info.tooltipWarning = LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"];
+		end
+		UIDropDownMenu_AddButton(info, level);
+		info.tooltipTitle = nil;
+		info.tooltipWarning = nil;
+	end
+
+	if (menuList == "blizzframes") then
+		info.menuList = nil;
+		info.notCheckable = nil;
+		info.hasArrow = nil;
+		info.isNotRadio = true;
+		info.keepShownOnClick = true;
+
+		for i, frameType in ipairs(BLIZZARD_UNITFRAMES) do
+			info.text = LLL["BLIZZARD_UNIT_FRAMES_" .. strupper(frameType)];
+			info.checked = function()
+				return DebouncePrivate.Options.blizzframes[frameType] ~= false
+			end
+			info.func = function(_, _, _, checked)
+				local val;
+				if (checked) then
+					val = nil;
+				else
+					val = false;
+				end
+				DebouncePrivate.Options.blizzframes[frameType] = val;
+				DebouncePrivate.UpdateBlizzardFrames();
+			end
+			UIDropDownMenu_AddButton(info, level);
 		end
 	end
 
