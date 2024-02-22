@@ -4,12 +4,14 @@
 -- 2. 기능/메뉴 별로 함수들을 쪼개기
 --   예: SomeMenu_Initialize(level, menuList)...
 
-local _, DebouncePrivate = ...;
-local NUM_SPECS          = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
-local LibDD              = LibStub:GetLibrary("LibUIDropDownMenu-4.0");
-local Constants          = DebouncePrivate.Constants;
-local LLL                = DebouncePrivate.L;
+local _, DebouncePrivate         = ...;
+DebouncePrivate.UIHelper         = {};
 
+local NUM_SPECS                  = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
+local LibDD                      = LibStub:GetLibrary("LibUIDropDownMenu-4.0");
+local Constants                  = DebouncePrivate.Constants;
+local LLL                        = DebouncePrivate.L;
+local UIHelper                   = DebouncePrivate.UIHelper;
 
 local MACRO_NAME_CHAR_LIMIT      = 32;
 local MACRO_CHAR_LIMIT           = 1000;
@@ -405,6 +407,8 @@ local function ColoredNameAndIconFromElementData(elementData)
 	return name, icon;
 end
 
+
+
 local function DeleteElementData(elementData)
 	if (IsEditingMacro(elementData)) then
 		DebounceMacroFrame:Hide();
@@ -789,13 +793,13 @@ do
 		if (action.combat ~= nil) then
 			addLabelLine(LLL["COMBAT"]);
 			local error = hasIssues and GetBindingIssue(action, "combat");
-			addValueLine(action.combat == true and LLL["IN_COMBAT"] or LLL["NOT_IN_COMBAT"], error);
+			addValueLine(action.combat == true and LLL["CONDITION_COMBAT_YES"] or LLL["CONDITION_COMBAT_NO"], error);
 		end
 
 		if (action.stealth ~= nil) then
 			local error = hasIssues and GetBindingIssue(action, "stealth");
 			addLabelLine(LLL["STEALTH"]);
-			addValueLine(action.stealth == true and LLL["STEALTHED"] or LLL["NOT_STEALTHED"], error);
+			addValueLine(action.stealth == true and LLL["CONDITION_STEALTH_YES"] or LLL["CONDITION_STEALTH_NO"], error);
 		end
 
 		if (action.forms ~= nil) then
@@ -848,26 +852,26 @@ do
 		if (action.specialbar ~= nil) then
 			local error = hasIssues and GetBindingIssue(action, "specialbar");
 			addLabelLine(LLL["SPECIALBAR"]);
-			addValueLine(action.specialbar == true and LLL["WITH_SPECIALBAR"] or LLL["WITHOUT_SPECIALBAR"], error);
+			addValueLine(action.specialbar == true and LLL["CONDITION_SPECIALBAR_YES"] or LLL["CONDITION_SPECIALBAR_NO"], error);
 		end
 
 		if (action.extrabar ~= nil) then
 			local error = hasIssues and GetBindingIssue(action, "extrabar");
 			addLabelLine(LLL["EXTRABAR"]);
-			addValueLine(action.extrabar == true and LLL["EXTRABAR_PRESENT"] or LLL["EXTRABAR_NOT_PRESENT"], error);
+			addValueLine(action.extrabar == true and LLL["CONDITION_EXTRABAR_YES"] or LLL["CONDITION_EXTRABAR_NO"], error);
 		end
 
 		if (action.petbattle ~= nil) then
 			local error = hasIssues and GetBindingIssue(action, "petbattle");
 			addLabelLine(LLL["PET_BATTLE"]);
-			addValueLine(action.petbattle == true and LLL["IN_PET_BATTLE"] or LLL["NOT_IN_PET_BATTLE"], error);
+			addValueLine(action.petbattle == true and LLL["CONDITION_PETBATTLE_YES"] or LLL["CONDITION_PETBATTLE_NO"], error);
 		end
 
 		for stateIndex = 1, Constants.MAX_NUM_CUSTOM_STATES do
 			local state = "$state" .. stateIndex;
 			if (action[state] ~= nil) then
 				addLabelLine(format(LLL["CUSTOM_STATE_NUM"], stateIndex));
-				addValueLine(action[state] == true and LLL["WHEN_STATE_IS_ON"] or LLL["WHEN_STATE_IS_OFF"]);
+				addValueLine(action[state] == true and LLL["CONDITION_CUSTOMSTATE_YES"] or LLL["CONDITION_CUSTOMSTATE_NO"]);
 			end
 		end
 
@@ -1732,34 +1736,7 @@ local function setEnableDropdownButton(button, enabled)
 	end
 end
 
-local function updateDropdownButtons()
-	if (L_UIDROPDOWNMENU_MENU_VALUE == "hover") then
-		local listFrame;
-		listFrame = _G[DROPDOWNLIST2];
-		if (listFrame:IsShown()) then
-			local action = listFrame.dropdown.elementData.action;
-			local disabled = not action.hover;
-			for index = 1, L_UIDROPDOWNMENU_MAXBUTTONS do
-				local button = _G[DROPDOWNLIST2 .. "Button" .. index];
-				if (not button or not button:IsShown()) then
-					break;
-				end
-				if (button.value == "reactions" or button.value == "frameTypes" or button.value == "ignoreHoverUnit") then
-					setEnableDropdownButton(button, not disabled);
-				end
-			end
-		end
-	elseif (L_UIDROPDOWNMENU_MENU_VALUE == "bonusbars") then
-	end
 
-	dump("dropdown", {
-		L_UIDROPDOWNMENU_MENU_VALUE = L_UIDROPDOWNMENU_MENU_VALUE,
-		L_UIDROPDOWNMENU_INIT_MENU = L_UIDROPDOWNMENU_INIT_MENU,
-		L_UIDROPDOWNMENU_MENU_LEVEL = L_UIDROPDOWNMENU_MENU_LEVEL,
-		L_UIDROPDOWNMENU_SHOW_TIME = L_UIDROPDOWNMENU_SHOW_TIME,
-		L_UIDROPDOWNMENU_OPEN_MENU = L_UIDROPDOWNMENU_OPEN_MENU,
-	})
-end
 
 local BuildCommandDropdownList;
 do
@@ -2137,7 +2114,7 @@ function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
 
 		info.tooltipTitle = nil;
 		info.tooltipWarning = nil;
-		
+
 		info.text = LLL["BLIZZARD_UNIT_FRAMES"];
 		info.menuList = "blizzframes"
 		info.notCheckable = 1;
@@ -2374,201 +2351,965 @@ function DebounceFrameMixin.OptionsDropDown_Initialize(self, level, menuList)
 	end
 end
 
-local function EditDropDown_Initialize(dropdown, level, menuList)
-	local elementData = dropdown.elementData;
-	if (not elementData) then
-		return;
-	end
+local EditDropDown_Initialize;
+do
+	local _elementData;
+	local _action
+	local _dropdown;
+	local _level;
+	local _menuList
+	local _info;
 
-	local action = elementData.action;
-	local name = NameAndIconFromElementData(elementData);
+	local subCoditions = {
+		actionbars = { "bonusbars", "specialbar", "extrabar" },
+		misc = { "stealth", "pet", "petbattle", },
+	};
 
-	local info = UIDropDownMenu_CreateInfo();
-	info.arg1 = action;
-	info.tooltipOnButton = 1;
+	-- local MenuItems = {
+	-- 	{
+	-- 		text = LLL["EDIT_MACRO"],
+	-- 		func = function()
+	-- 			DebounceMacroFrame:ShowEdit(_elementData);
+	-- 		end,
+	-- 		show = function() return _action.type == Constants.MACROTEXT end,
+	-- 	},
+	-- 	{
+	-- 		text = LLL["CONVERT_TO_MACRO_TEXT"],
+	-- 		func = function()
+	-- 			local original = CopyTable(_action);
+	-- 			if (DebouncePrivate.ConvertToMacroText(_action)) then
+	-- 				_action._dirty = true;
+	-- 				DebouncePrivate.UpdateBindings();
+	-- 				local cancelFunc = function()
+	-- 					wipe(_elementData._action);
+	-- 					MergeTable(_elementData._action, original);
+	-- 					_action._dirty = true;
+	-- 					DebouncePrivate.UpdateBindings();
+	-- 				end
+	-- 				DebounceMacroFrame:ShowEdit(_elementData, cancelFunc);
+	-- 			end
+	-- 		end,
+	-- 		show = function() return DebouncePrivate.CanConvertToMacroText(_action) end,
+	-- 	},
+	-- 	{
+	-- 		text = LLL["CONVERT_TO_MACRO_TEXT"],
+	-- 		func = function()
+	-- 			local original = CopyTable(_action);
+	-- 			if (DebouncePrivate.ConvertToMacroText(_action)) then
+	-- 				_action._dirty = true;
+	-- 				DebouncePrivate.UpdateBindings();
+	-- 				local cancelFunc = function()
+	-- 					wipe(_elementData._action);
+	-- 					MergeTable(_elementData._action, original);
+	-- 					_action._dirty = true;
+	-- 					DebouncePrivate.UpdateBindings();
+	-- 				end
+	-- 				DebounceMacroFrame:ShowEdit(_elementData, cancelFunc);
+	-- 			end
+	-- 		end,
+	-- 		show = function() return DebouncePrivate.CanConvertToMacroText(_action) end,
+	-- 	},
+	-- };
 
-	if (level == 1) then
-		info.text = name;
-		info.isTitle = true;
-		info.notCheckable = 1;
-		UIDropDownMenu_AddButton(info, level);
-		info.isTitle = nil;
 
-		if (action.type == Constants.MACROTEXT) then
-			info.text = LLL["EDIT_MACRO"];
-			info.notCheckable = 1;
-			info.disabled = nil;
-			info.func = function()
-				DebounceMacroFrame:ShowEdit(elementData);
+
+	local function listFrameOnShow()
+		if true then return end
+
+		dump("dropdown", {
+			L_UIDROPDOWNMENU_MENU_VALUE = L_UIDROPDOWNMENU_MENU_VALUE,
+			L_UIDROPDOWNMENU_INIT_MENU = L_UIDROPDOWNMENU_INIT_MENU,
+			L_UIDROPDOWNMENU_MENU_LEVEL = L_UIDROPDOWNMENU_MENU_LEVEL,
+			L_UIDROPDOWNMENU_SHOW_TIME = L_UIDROPDOWNMENU_SHOW_TIME,
+			L_UIDROPDOWNMENU_OPEN_MENU = L_UIDROPDOWNMENU_OPEN_MENU,
+		})
+
+		local dropdown = L_UIDROPDOWNMENU_OPEN_MENU;
+		local level = L_UIDROPDOWNMENU_MENU_LEVEL;
+
+		do
+			local listFrame = _G[DROPDOWNLIST1];
+			if (listFrame:IsShown()) then
+				local action = dropdown.elementData.action;
+				for index = 1, L_UIDROPDOWNMENU_MAXBUTTONS do
+					local button = _G[DROPDOWNLIST1 .. "Button" .. index];
+					if (not button or not button:IsShown()) then
+						break;
+					end
+
+					--print(GetTime(), button.value, action[button.value])
+
+					dump("button" .. index, button)
+					if (not button.colorCode) then
+						--dump("button" .. index.."font?",button:GetNormalFontObject())
+						local hasConditions = button.value and action[button.value] ~= nil;
+						if (not hasConditions and subCoditions[button.value]) then
+							for _, subCond in ipairs(subCoditions[button.value]) do
+								if (action[subCond] ~= nil) then
+									hasConditions = true;
+									break;
+								end
+							end
+						end
+
+						if (hasConditions) then
+							button:GetFontString():SetTextColor(BLUE_FONT_COLOR:GetRGB());
+						else
+							button:GetFontString():SetTextColor(1, 1, 1);
+						end
+					end
+				end
 			end
-			UIDropDownMenu_AddButton(info, level);
 		end
 
-		if (DebouncePrivate.CanConvertToMacroText(action)) then
-			info.text = LLL["CONVERT_TO_MACRO_TEXT"];
-			info.notCheckable = 1;
+		if (L_UIDROPDOWNMENU_MENU_VALUE == "hover") then
+			local listFrame;
+			listFrame = _G[DROPDOWNLIST2];
+			if (listFrame:IsShown()) then
+				local action = listFrame.dropdown.elementData.action;
+				local disabled = not action.hover;
+				for index = 1, L_UIDROPDOWNMENU_MAXBUTTONS do
+					local button = _G[DROPDOWNLIST2 .. "Button" .. index];
+					if (not button or not button:IsShown()) then
+						break;
+					end
+					if (button.value == "reactions" or button.value == "frameTypes" or button.value == "ignoreHoverUnit") then
+						setEnableDropdownButton(button, not disabled);
+					end
+				end
+			end
+		elseif (L_UIDROPDOWNMENU_MENU_VALUE == "bonusbars") then
+		end
+	end
+
+	local function setValueFunc(_, property, value, checked)
+		_action[property] = value;
+		DebouncePrivate.UpdateBindings();
+		UIDropDownMenu_Refresh(L_UIDROPDOWNMENU_OPEN_MENU);
+		listFrameOnShow();
+	end
+
+	local function checkedFunc_eq(button)
+		return _action[button.arg1] == button.arg2;
+	end
+
+
+
+	local function addBooleanConditionButtons(label, property)
+		local titleLabel = rawget(LLL, "CONDITION_" .. label);
+		if (titleLabel) then
+			_info.isTitle = true;
+			_info.notCheckable = 1;
+			_info.text = titleLabel;
+			UIDropDownMenu_AddButton(_info, _level);
+		end
+
+		_info.isTitle = nil;
+		_info.disabled = nil;
+		_info.notCheckable = nil;
+		_info.isNotRadio = nil;
+		_info.keepShownOnClick = true;
+		_info.hasArrow = nil;
+		_info.menuList = nil;
+		_info.tooltipTitle = nil;
+		_info.arg1 = property;
+
+		_info.text = rawget(LLL, "CONDITION_" .. label .. "_DISABLE") or LLL["DISABLE"];
+		_info.arg2 = nil;
+		_info.checked = checkedFunc_eq;
+		_info.func = setValueFunc;
+		UIDropDownMenu_AddButton(_info, _level);
+
+		_info.text = LLL["CONDITION_" .. label .. "_YES"];
+		_info.arg2 = true;
+		_info.func = function()
+			_action[property] = true;
+			DebouncePrivate.UpdateBindings();
+			UIDropDownMenu_Refresh(L_UIDROPDOWNMENU_OPEN_MENU);
+			listFrameOnShow();
+		end
+		UIDropDownMenu_AddButton(_info, _level);
+
+		_info.text = LLL["CONDITION_" .. label .. "_NO"];
+		_info.arg2 = false;
+		_info.func = function()
+			_action[property] = false;
+			DebouncePrivate.UpdateBindings();
+			UIDropDownMenu_Refresh(L_UIDROPDOWNMENU_OPEN_MENU);
+			listFrameOnShow();
+		end
+		UIDropDownMenu_AddButton(_info, _level);
+	end
+
+	local function checkedFunc_bits(button)
+		return _action[button.arg1] and bit.band(_action[button.arg1], button.arg2) == button.arg2;
+	end
+
+	local function setValueFunc_bits(_, property, value, checked)
+		local currVal = _action[property] or 0;
+		if (checked) then
+			_action[property] = bit.bor(currVal, value);
+		else
+			_action[property] = bit.band(currVal, bit.bnot(value));
+		end
+		DebouncePrivate.UpdateBindings();
+		UIDropDownMenu_Refresh(L_UIDROPDOWNMENU_OPEN_MENU);
+		listFrameOnShow();
+	end
+
+	local function addBitFlagsConditionButtons(label, property, options, noDisable)
+		local titleLabel = rawget(LLL, "CONDITION_" .. label);
+		if (titleLabel) then
+			_info.isTitle = true;
+			_info.notCheckable = 1;
+			_info.text = titleLabel;
+			UIDropDownMenu_AddButton(_info, _level);
+		end
+
+		_info.isTitle = nil;
+		_info.disabled = nil;
+		_info.notCheckable = nil;
+		_info.keepShownOnClick = true;
+		_info.hasArrow = nil;
+		_info.menuList = nil;
+		_info.tooltipTitle = nil;
+		_info.arg1 = property;
+
+		if (not noDisable) then
+			_info.isNotRadio = nil;
+			_info.text = rawget(LLL, "CONDITION_" .. label .. "_DISABLE") or LLL["DISABLE"];
+			_info.arg2 = nil;
+			_info.checked = checkedFunc_eq;
+			_info.func = setValueFunc;
+			UIDropDownMenu_AddButton(_info, _level);
+		end
+
+		_info.isNotRadio = true;
+		_info.checked = checkedFunc_bits;
+		_info.func = setValueFunc_bits;
+
+		for i = 1, #options do
+			local labelText = options[i].label;
+			local value = options[i].value;
+			_info.text = labelText or ("LABEL" .. i); -- todo
+			_info.arg2 = value;
+			UIDropDownMenu_AddButton(_info, _level);
+		end
+	end
+
+	local _menu;
+	local function AddDropDownButton(info, dropdownMenu, button, buttonIndex, level)
+		local dropdownMenuButton = button;
+
+		print("level:", L_UIDROPDOWNMENU_MENU_LEVEL)
+
+		if (L_UIDROPDOWNMENU_MENU_LEVEL == 2) then
+			return;
+		end
+
+
+
+		info.text = button:GetText();
+		info.value = buttonIndex;
+		info.owner = nil;
+		info.func = function() dropdownMenuButton:OnClick() end
+		info.notCheckable = not dropdownMenuButton:IsCheckable();
+
+		info.checked = dropdownMenuButton:IsChecked();
+		info.hasArrow = dropdownMenuButton:IsNested();
+		info.isNotRadio = dropdownMenuButton:IsNotRadio();
+		info.isTitle = dropdownMenuButton:IsTitle();
+		if (not info.isTitle) then
 			info.disabled = nil;
+		end
+
+		local addedButton = UIDropDownMenu_AddButton(info, level);
+		button:SetCurrentButton(addedButton);
+	end
+
+	local function ShowMenu(dropdown, elementData)
+		local info = UIDropDownMenu_CreateInfo();
+
+		if (L_UIDROPDOWNMENU_MENU_LEVEL == 1) then
+			local menuButtons = DebouncePrivate.GetEditPopupMenuButtons();
+			for index, button in ipairs(menuButtons) do
+				-- print(index, button)
+				if (button:CanShow()) then
+					AddDropDownButton(info, dropdown, button, index, L_UIDROPDOWNMENU_MENU_VALUE);
+				end
+			end
+		elseif (L_UIDROPDOWNMENU_MENU_LEVEL == 2) then
+			local menuButtons = DebouncePrivate.GetEditPopupMenuButtons();
+			_menu = menuButtons[L_UIDROPDOWNMENU_MENU_VALUE];
+		end
+
+		dump("showmenu" .. L_UIDROPDOWNMENU_MENU_LEVEL, {
+			dropdownMenu = dropdown,
+			_menu = _menu,
+			--button = button,
+			--buttonIndex,
+			--buttonIndex,
+			--level = level,
+			L_UIDROPDOWNMENU_MENU_LEVEL = L_UIDROPDOWNMENU_MENU_LEVEL,
+			L_UIDROPDOWNMENU_MENU_VALUE = L_UIDROPDOWNMENU_MENU_VALUE,
+			L_UIDROPDOWNMENU_OPEN_MENU = L_UIDROPDOWNMENU_OPEN_MENU,
+		});
+
+
+		print(1)
+	end
+
+	function EditDropDown_Initialize(dropdown, level, menuList)
+		local elementData = dropdown.elementData;
+		if (not elementData) then
+			return;
+		end
+
+		dropdown.listFrameOnShow = listFrameOnShow;
+
+
+		local action = elementData.action;
+		local name = NameAndIconFromElementData(elementData);
+
+		local info = UIDropDownMenu_CreateInfo();
+
+		_dropdown, _level, _menuList = dropdown, level, menuList;
+		_elementData = elementData;
+		_action = action;
+		_info = info;
+
+		if (true) then
+			DebouncePrivate.ShowEditPopup(dropdown, level, menuList);
+
+
+			return;
+		end
+
+		info.arg1 = action;
+		info.tooltipOnButton = 1;
+
+		if (level == 1) then
+			info.text = name;
+			info.isTitle = true;
+			info.notCheckable = 1;
+			UIDropDownMenu_AddButton(info, level);
+			info.isTitle = nil;
+
+			if (action.type == Constants.MACROTEXT) then
+				info.text = LLL["EDIT_MACRO"];
+				info.notCheckable = 1;
+				info.disabled = nil;
+				info.func = function()
+					DebounceMacroFrame:ShowEdit(elementData);
+				end
+				UIDropDownMenu_AddButton(info, level);
+			end
+
+			if (DebouncePrivate.CanConvertToMacroText(action)) then
+				info.text = LLL["CONVERT_TO_MACRO_TEXT"];
+				info.notCheckable = 1;
+				info.disabled = nil;
+				info.func = function()
+					local original = CopyTable(action);
+					if (DebouncePrivate.ConvertToMacroText(action)) then
+						action._dirty = true;
+						DebouncePrivate.UpdateBindings();
+						local cancelFunc = function()
+							wipe(elementData.action);
+							MergeTable(elementData.action, original);
+							action._dirty = true;
+							DebouncePrivate.UpdateBindings();
+						end
+						DebounceMacroFrame:ShowEdit(elementData, cancelFunc);
+					end
+				end
+				UIDropDownMenu_AddButton(info, level);
+			end
+
+			info.text = LLL["UNBIND"];
+			info.notCheckable = 1;
+			info.disabled = action.key == nil;
 			info.func = function()
-				local original = CopyTable(action);
-				if (DebouncePrivate.ConvertToMacroText(action)) then
-					action._dirty = true;
-					DebouncePrivate.UpdateBindings();
-					local cancelFunc = function()
-						wipe(elementData.action);
-						MergeTable(elementData.action, original);
+				action.key = nil;
+				action._dirty = true;
+				DebouncePrivate.UpdateBindings();
+			end
+			UIDropDownMenu_AddButton(info, level);
+			info.disabled = nil;
+
+			if (action.type == Constants.SPELL or action.type == Constants.ITEM or action.type == Constants.TARGET or action.type == Constants.FOCUS or action.type == Constants.TOGGLEMENU) then
+				info.text = LLL["TARGET_UNIT"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
+				--info.disabled = (action.hover and true) or nil;
+				info.disabled = nil;
+				info.hasArrow = true;
+				info.menuList = "unit";
+				info.value = "unit";
+				info.notCheckable = 1;
+				info.tooltipTitle = LLL["TARGET_DESC"];
+				UIDropDownMenu_AddButton(info, level);
+			end
+
+			info.disabled = nil;
+			info.value = nil;
+			info.tooltipTitle = nil;
+			info.tooltipText = nil;
+			info.tooltipInstruction = nil;
+			info.tooltipWarning = nil;
+			info.tooltipWhileDisabled = nil;
+
+			UIDropDownMenu_AddSeparator(level);
+
+			info.text = LLL["SPECIAL_CONDITIONS"];
+			info.isTitle = true;
+			info.hasArrow = nil;
+			UIDropDownMenu_AddButton(info, level);
+
+			info.isTitle = nil;
+			info.notCheckable = nil;
+			--info.isUninteractable = nil;
+			info.disabled = nil;
+			info.notCheckable = 1;
+
+			if (action.type ~= Constants.SETCUSTOM) then
+				info.text = LLL["UNIT_FRAMES"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
+				info.hasArrow = true;
+				info.notCheckable = 1;
+				info.menuList = "hover";
+				info.value = "hover";
+				info.tooltipTitle = LLL["UNIT_FRAMES"];
+				info.tooltipText = LLL["HOVER_OVER_UNIT_FRAMES_DESC"];
+				if (DebouncePrivate.CliqueDetected) then
+					info.tooltipWarning = LLL["HOVER_OVER_UNIT_FRAMES_CLIQUE_WARNING"];
+				end
+				UIDropDownMenu_AddButton(info, level);
+				info.tooltipTitle = nil;
+				info.tooltipText = nil;
+				info.value = nil;
+			end
+
+			-- info.text = LLL["UNIT_EXISTS"];
+			-- info.hasArrow = true;
+			-- info.menuList = "unitexists";
+			-- UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["GROUP"];
+			info.value = "groups";
+			info.hasArrow = true;
+			info.menuList = "group";
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["COMBAT"];
+			info.value = "combat";
+			info.hasArrow = true;
+			info.menuList = "combat";
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["SHAPESHIFT"];
+			info.value = "forms";
+			info.hasArrow = true;
+			info.menuList = "shapeshift";
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["ACTIONBARS"];
+			info.value = "actionbars";
+			info.hasArrow = true;
+			info.menuList = "actionbars";
+
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["MISC"];
+			info.value = "misc";
+			info.hasArrow = true;
+			info.menuList = "misc";
+			UIDropDownMenu_AddButton(info, level);
+
+			UIDropDownMenu_AddSeparator(level);
+
+			info.text = LLL["PRIORITY"]
+			info.value = "priority";
+			info.hasArrow = true;
+			info.menuList = "priority";
+			UIDropDownMenu_AddButton(info, level);
+
+			info.value = nil;
+			info.text = LLL["MOVE_TO"]
+			info.hasArrow = true;
+			info.menuList = "move";
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["COPY_TO"]
+			info.hasArrow = true;
+			info.menuList = "copy";
+			UIDropDownMenu_AddButton(info, level);
+
+			info.text = LLL["DELETE"];
+			info.hasArrow = nil;
+			info.menuList = nil;
+			info.func = function()
+				ShowDeleteConfirmationPopup(elementData);
+			end
+			UIDropDownMenu_AddButton(info, level);
+		elseif (level == 2) then
+			if (menuList == "unit") then
+				info.hasArrow = nil;
+				info.menuList = nil;
+				info.notCheckable = nil;
+
+				if (action.type == Constants.TARGET or action.type == Constants.FOCUS or action.type == Constants.TOGGLEMENU) then
+
+				else
+					info.text = LLL["UNIT_DISABLE"];
+					info.checked = action.unit == nil;
+					info.func = function()
+						action.unit = nil;
 						action._dirty = true;
 						DebouncePrivate.UpdateBindings();
 					end
-					DebounceMacroFrame:ShowEdit(elementData, cancelFunc);
+					UIDropDownMenu_AddButton(info, level);
+				end
+
+				for _, unit in ipairs(SORTED_UNIT_LIST) do
+					local unitInfo = UNIT_INFOS[unit];
+					if (unitInfo[action.type] ~= false) then
+						info.text = unitInfo.name .. (unitInfo.tooltipTitle and LLL["_HAS_TOOLTIP_SUFFIX"] or "");
+						info.tooltipTitle = unitInfo.tooltipTitle;
+						info.checked = action.unit == unit;
+						info.func = function()
+							action.unit = unit;
+							action._dirty = true;
+							DebouncePrivate.UpdateBindings();
+						end
+						UIDropDownMenu_AddButton(info, level);
+					end
+				end
+				info.tooltipTitle = nil;
+				info.tooltipInstruction = nil;
+				info.tooltipWarning = nil;
+				info.tooltipWhileDisabled = nil;
+
+				UIDropDownMenu_AddSeparator(level);
+
+				info.isNotRadio = true;
+				info.keepShownOnClick = true;
+				info.disabled = action.unit == nil or action.unit == "none";
+				info.text = LLL["ONLY_WHEN_UNIT_EXISTS"];
+				info.checked = action.checkUnitExists;
+				info.func = function(_, _, _, checked)
+					action.checkUnitExists = checked or nil;
+					DebouncePrivate.UpdateBindings();
+					--DebounceFrame:Update();
+				end
+				UIDropDownMenu_AddButton(info, level);
+
+				info.isNotRadio = nil;
+				info.keepShownOnClick = nil;
+				info.disabled = nil;
+			elseif (menuList == "hover") then
+				info.hasArrow = nil;
+				info.notCheckable = nil;
+				info.menuList = nil;
+				info.keepShownOnClick = true;
+
+				local FRAMETYPE_MASK = Constants.FRAMETYPE_ALL;
+				info.text = LLL["DISABLE"];
+				info.checked = function() return action.hover == nil end;
+				info.func = function()
+					action.hover = nil;
+					DebouncePrivate.UpdateBindings();
+					--DebounceFrame:Update();
+					UIDropDownMenu_Refresh(dropdown);
+					listFrameOnShow();
+				end
+				UIDropDownMenu_AddButton(info, level);
+
+				info.text = LLL["WHEN_HOVERED"];
+				info.checked = function() return action.hover == true end;
+				info.func = function()
+					action.hover = true;
+					DebouncePrivate.UpdateBindings();
+					--DebounceFrame:Update();
+					UIDropDownMenu_Refresh(dropdown);
+					listFrameOnShow();
+				end
+				UIDropDownMenu_AddButton(info, level);
+
+				info.text = LLL["WHEN_NOT_HOVERED"];
+				info.checked = function() return action.hover == false end;
+				info.func = function()
+					action.hover = false;
+					DebouncePrivate.UpdateBindings();
+					--DebounceFrame:Update();
+					UIDropDownMenu_Refresh(dropdown);
+					listFrameOnShow();
+				end
+				UIDropDownMenu_AddButton(info, level);
+
+				UIDropDownMenu_AddSeparator(level);
+
+				info.isTitle = true;
+				info.notCheckable = 1;
+				info.notClickable = true;
+				info.text = LLL["REACTIONS"];
+				UIDropDownMenu_AddButton(info, level);
+				info.isTitle = nil;
+				info.notCheckable = nil;
+				info.notClickable = nil;
+
+				info.isNotRadio = true;
+				info.value = "reactions";
+				info.disabled = not action.hover;
+
+				for _, reaction in ipairs(UNIT_FRAME_REACTIONS) do
+					local flag = Constants["REACTION_" .. reaction];
+					info.text = LLL["REACTION_" .. reaction];
+					info.checked = function() return bit.band(action.reactions or Constants.REACTION_ALL, flag) == flag end;
+					info.func = function(_, _, _, checked)
+						if (checked) then
+							action.reactions = bit.bor(action.reactions or Constants.REACTION_ALL, flag);
+						else
+							action.reactions = bit.band(action.reactions or Constants.REACTION_ALL, bit.bnot(flag));
+						end
+						if (action.reactions == Constants.REACTION_ALL) then
+							action.reactions = nil;
+						end
+						action._dirty = true;
+						DebouncePrivate.UpdateBindings();
+						UIDropDownMenu_Refresh(dropdown);
+						listFrameOnShow();
+					end
+					UIDropDownMenu_AddButton(info, level);
+				end
+
+				info.value = nil;
+
+				UIDropDownMenu_AddSeparator(level);
+
+				info.isTitle = true;
+				info.notCheckable = 1;
+				info.notClickable = true;
+				info.text = LLL["FRAME_TYPES"];
+				UIDropDownMenu_AddButton(info, level);
+				info.isTitle = nil;
+				info.notCheckable = nil;
+				info.notClickable = nil;
+
+				info.isNotRadio = nil;
+				info.leftPadding = nil;
+
+				info.isNotRadio = true;
+				info.disabled = not action.hover;
+				info.value = "frameTypes";
+
+				local frametypeOptions = {};
+
+				for i = 1, #UNIT_FRAME_TYPES do
+					local frameType = UNIT_FRAME_TYPES[i];
+					local flag = Constants["FRAMETYPE_" .. frameType];
+					local label = LLL["FRAMETYPE_" .. frameType];
+					tinsert(frametypeOptions, { value = flag, label = label });
+
+					-- info.text = LLL["FRAMETYPE_" .. frameType];
+					-- info.checked = function() return action.frameTypes == nil or bit.band(action.frameTypes, flag) == flag end
+					-- info.func = function(_, _, _, checked)
+					-- 	if (checked) then
+					-- 		action.frameTypes = bit.bor(action.frameTypes or FRAMETYPE_MASK, flag);
+					-- 	else
+					-- 		action.frameTypes = bit.band(action.frameTypes or FRAMETYPE_MASK, bit.bnot(flag));
+					-- 	end
+					-- 	if (action.frameTypes == FRAMETYPE_MASK) then
+					-- 		action.frameTypes = nil;
+					-- 	end
+					-- 	action._dirty = true;
+					-- 	DebouncePrivate.UpdateBindings();
+					-- 	UIDropDownMenu_Refresh(dropdown);
+					-- 	--DebounceFrame:Update();
+					-- 	listFrameOnShow();
+					-- end
+					-- UIDropDownMenu_AddButton(info, level);
+				end
+				-- info.disabled = nil;
+				addBitFlagsConditionButtons("FRAMETYPE", "frameTypes", frametypeOptions, true);
+
+				UIDropDownMenu_AddSeparator(level);
+
+				info.disabled = not action.hover;
+				info.text = LLL["IGNORE_HOVER_UNIT"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
+				info.value = "ignoreHoverUnit";
+				info.tooltipTitle = LLL["IGNORE_HOVER_UNIT_TIP"]
+				info.checked = function() return action.ignoreHoverUnit end
+				info.func = function(_, _, _, checked)
+					action.ignoreHoverUnit = checked or nil;
+					DebouncePrivate.UpdateBindings();
+					listFrameOnShow();
+					UIDropDownMenu_Refresh(dropdown);
+				end
+				UIDropDownMenu_AddButton(info, level);
+				info.tooltipTitle = nil;
+
+				info.isNotRadio = nil;
+				info.keepShownOnClick = nil;
+				info.value = nil;
+			elseif (menuList == "group") then
+				local optionsArray = {
+					{ value = Constants.GROUP_NONE,  label = LLL["GROUP_NONE"] },
+					{ value = Constants.GROUP_PARTY, label = LLL["GROUP_PARTY"] },
+					{ value = Constants.GROUP_RAID,  label = LLL["GROUP_RAID"] },
+				};
+				addBitFlagsConditionButtons("GROUP", "groups", optionsArray);
+			elseif (menuList == "combat") then
+				addBooleanConditionButtons("COMBAT", "combat");
+			elseif (menuList == "shapeshift") then
+				local optionsArray = {};
+				for i = 0, 10 do
+					local shapeshiftName;
+					if (i == 0) then
+						shapeshiftName = LLL["NO_SHAPESHIFT"];
+					else
+						local _, _, _, spellID = GetShapeshiftFormInfo(i);
+						shapeshiftName = spellID and GetSpellInfo(spellID) or nil;
+					end
+					local label = format("[form:%d]", i);
+					if (shapeshiftName) then
+						label = format("%s (%s)", label, shapeshiftName);
+					end
+					tinsert(optionsArray, { value = 2 ^ i, label = label });
+				end
+
+				addBitFlagsConditionButtons("SHAPESHIFT", "forms", optionsArray);
+			elseif (menuList == "actionbars") then
+				info.notCheckable = 1;
+
+				info.text = LLL["BONUSBAR"];
+				info.hasArrow = true;
+				info.menuList = "bonusbars";
+				UIDropDownMenu_AddButton(info, level);
+
+				info.text = LLL["SPECIALBAR"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
+				info.hasArrow = true;
+				info.menuList = "specialbar";
+				info.tooltipTitle = LLL["SPECIALBAR"];
+				info.tooltipText = LLL["SPECIALBAR_DESC"];
+				UIDropDownMenu_AddButton(info, level);
+
+				info.text = LLL["EXTRABAR"];
+				info.hasArrow = true;
+				info.menuList = "extrabar";
+				UIDropDownMenu_AddButton(info, level);
+			elseif (menuList == "misc") then
+				info.notCheckable = 1;
+
+				info.text = LLL["STEALTH"];
+				info.hasArrow = true;
+				info.menuList = "stealth";
+				UIDropDownMenu_AddButton(info, level);
+
+				info.text = LLL["PET"];
+				info.hasArrow = true;
+				info.menuList = "pet";
+				UIDropDownMenu_AddButton(info, level);
+
+				info.text = LLL["PET_BATTLE"];
+				info.hasArrow = true;
+				info.menuList = "petbattle";
+				UIDropDownMenu_AddButton(info, level);
+
+				info.text = LLL["CUSTOM_STATES"];
+				info.hasArrow = true;
+				info.menuList = "customStates";
+				UIDropDownMenu_AddButton(info, level);
+			elseif (menuList == "priority") then
+				info.hasArrow = nil;
+				info.notCheckable = nil;
+				info.menuList = nil;
+
+				for i = 1, 5 do
+					info.text = LLL["PRIORITY" .. i];
+					info.value = i;
+					info.checked = (action.priority == nil and i == Constants.DEFAULT_PRIORITY) or action.priority == i;
+					info.func = function()
+						if (i == Constants.DEFAULT_PRIORITY) then
+							action.priority = nil;
+						else
+							action.priority = i;
+						end
+						DebouncePrivate.UpdateBindings();
+						listFrameOnShow();
+					end
+					UIDropDownMenu_AddButton(info, level);
+				end
+			elseif (menuList == "loadouts") then
+				--/DUMP C_ClassTalents.GetConfigIDsBySpecID(102)
+				info.hasArrow = nil;
+				info.menuList = nil;
+
+				local function addLoadoutOption(configID, configName, icon)
+					info.text = configName;
+					info.icon = icon;
+					info.value = configID;
+					info.checked = function()
+						return action.loadouts and action.loadouts[configID];
+					end
+					info.func = function(_, _, _, checked)
+						if (checked) then
+							action.loadouts = action.loadouts or {};
+							action.loadouts[configID] = true;
+						elseif (action.loadouts) then
+							action.loadouts[configID] = nil;
+						end
+						DebouncePrivate.UpdateBindings();
+						--DebounceFrame:Update();
+						UIDropDownMenu_Refresh(dropdown);
+					end
+					UIDropDownMenu_AddButton(info, level);
+				end
+
+				info.text = LLL["DISABLE"];
+				info.checked = function() return action.loadouts == nil; end
+				info.func = function()
+					action.loadouts = nil;
+					DebouncePrivate.UpdateBindings();
+					--DebounceFrame:Update();
+				end
+				UIDropDownMenu_AddButton(info, level);
+
+				info.isTitle = nil;
+				info.notCheckable = nil;
+				info.isNotRadio = true;
+				info.keepShownOnClick = true;
+				info.disabled = nil
+
+				for spec = 1, NUM_SPECS do
+					local specID, specName, _, specIcon = GetSpecializationInfo(spec);
+					local configIDs = C_ClassTalents.GetConfigIDsBySpecID(specID);
+					if (C_ClassTalents.GetHasStarterBuild()) then
+						tinsert(configIDs, -spec);
+					end
+
+					for _, configID in ipairs(configIDs) do
+						local configName;
+						if (configID < 0) then
+							configName = BLUE_FONT_COLOR:WrapTextInColorCode(TALENT_FRAME_DROP_DOWN_STARTER_BUILD);
+						else
+							local configInfo = C_Traits.GetConfigInfo(configID);
+							configName = configInfo.name;
+						end
+						configName = format("%s (%s)", configName, specName);
+						addLoadoutOption(configID, configName, specIcon);
+					end
+				end
+				info.icon = nil;
+				info.value = nil;
+				info.checked = nil;
+				info.func = nil;
+
+				UIDropDownMenu_AddSeparator(level);
+
+				info.text = LLL["TALENT_LOADOUTS_WHEN_NOT_SELECTED"];
+				info.checked = function() return action.excludeLoadouts end
+				info.func = function(_, _, _, checked)
+					action.excludeLoadouts = checked;
+					DebouncePrivate.UpdateBindings();
+					--DebounceFrame:Update();
+				end
+				UIDropDownMenu_AddButton(info, level);
+				info.isTitle = nil;
+				info.notCheckable = nil;
+				info.disabled = nil
+
+				-- addLoadoutOptions(true);
+				info.keepShownOnClick = nil;
+				info.isNotRadio = nil;
+				info.icon = nil;
+			elseif (menuList == "move" or menuList == "copy") then
+				info.hasArrow = nil;
+				info.notCheckable = nil;
+				info.menuList = nil;
+
+				if (menuList == "copy") then
+					info.text = LLL["CURRENT_TAB"];
+					info.notCheckable = 1;
+					info.func = function()
+						local toLayerIndex = GetLayerID();
+						MoveAction(elementData, toLayerIndex, true);
+						CloseDropDownMenus(1);
+					end
+					UIDropDownMenu_AddButton(info, level);
+				end
+
+				for i = 1, #DebounceFrame.Tabs do
+					for j = 1, #DebounceFrame.SideTabs do
+						if (i ~= _selectedTab or j ~= _selectedSideTab) then
+							local label1 = GetTabLabel(i);
+							local label2 = GetSideTabaLabel(j);
+
+							if (label1 and label2) then
+								info.text = format("%s - %s", label1, label2);
+								info.notCheckable = 1;
+								info.func = function()
+									local toLayerIndex = GetLayerID(i, j);
+									MoveAction(elementData, toLayerIndex, menuList == "copy");
+									CloseDropDownMenus(1);
+								end
+								UIDropDownMenu_AddButton(info, level);
+							end
+						end
+					end
 				end
 			end
-			UIDropDownMenu_AddButton(info, level);
-		end
-
-		info.text = LLL["UNBIND"];
-		info.notCheckable = 1;
-		info.disabled = action.key == nil;
-		info.func = function()
-			action.key = nil;
-			action._dirty = true;
-			DebouncePrivate.UpdateBindings();
-		end
-		UIDropDownMenu_AddButton(info, level);
-		info.disabled = nil;
-
-		if (action.type == Constants.SPELL or action.type == Constants.ITEM or action.type == Constants.TARGET or action.type == Constants.FOCUS or action.type == Constants.TOGGLEMENU) then
-			info.text = LLL["TARGET_UNIT"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
-			--info.disabled = (action.hover and true) or nil;
-			info.disabled = nil;
-			info.hasArrow = true;
-			info.menuList = "unit";
-			info.value = "unit";
-			info.notCheckable = 1;
-			info.tooltipTitle = LLL["TARGET_DESC"];
-			UIDropDownMenu_AddButton(info, level);
-		end
-
-		info.disabled = nil;
-		info.value = nil;
-		info.tooltipTitle = nil;
-		info.tooltipText = nil;
-		info.tooltipInstruction = nil;
-		info.tooltipWarning = nil;
-		info.tooltipWhileDisabled = nil;
-
-		UIDropDownMenu_AddSeparator(level);
-
-		info.text = LLL["SPECIAL_CONDITIONS"];
-		info.isTitle = true;
-		info.hasArrow = nil;
-		UIDropDownMenu_AddButton(info, level);
-
-		info.isTitle = nil;
-		info.notCheckable = nil;
-		--info.isUninteractable = nil;
-		info.disabled = nil;
-		info.notCheckable = 1;
-
-		if (action.type ~= Constants.SETCUSTOM) then
-			info.text = LLL["UNIT_FRAMES"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
-			info.hasArrow = true;
-			info.notCheckable = 1;
-			info.menuList = "hover";
-			info.value = "hover";
-			info.tooltipTitle = LLL["UNIT_FRAMES"];
-			info.tooltipText = LLL["HOVER_OVER_UNIT_FRAMES_DESC"];
-			if (DebouncePrivate.CliqueDetected) then
-				info.tooltipWarning = LLL["HOVER_OVER_UNIT_FRAMES_CLIQUE_WARNING"];
+		elseif (level == 3) then
+			if (menuList == "petbattle") then
+				addBooleanConditionButtons("PETBATTLE", "petbattle");
 			end
-			UIDropDownMenu_AddButton(info, level);
-			info.tooltipTitle = nil;
-			info.tooltipText = nil;
+		end
+
+		if (menuList == "customStates") then
+			info.notCheckable = 1;
+			for i = 1, Constants.MAX_NUM_CUSTOM_STATES do
+				info.text = format(LLL["CUSTOM_STATE_NUM"], i);
+				info.hasArrow = true;
+				info.menuList = "customState";
+				info.value = i;
+				UIDropDownMenu_AddButton(info, level);
+			end
 			info.value = nil;
+		elseif (menuList == "customState") then
+			local stateIndex = L_UIDROPDOWNMENU_MENU_VALUE;
+			local state = "$state" .. stateIndex;
+
+			info.text = format(LLL["CUSTOM_STATE_NUM"], stateIndex);
+			info.isTitle = true;
+			info.notCheckable = 1;
+			UIDropDownMenu_AddButton(info, level);
+			addBooleanConditionButtons("CUSTOMSTATE", state);
 		end
 
-		-- info.text = LLL["UNIT_EXISTS"];
-		-- info.hasArrow = true;
-		-- info.menuList = "unitexists";
-		-- UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["GROUP"];
-		info.hasArrow = true;
-		info.menuList = "group";
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["COMBAT"];
-		info.hasArrow = true;
-		info.menuList = "combat";
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["SHAPESHIFT"];
-		info.hasArrow = true;
-		info.menuList = "shapeshift";
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["ACTIONBARS"];
-		info.hasArrow = true;
-		info.menuList = "actionbars";
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["MISC"];
-		info.hasArrow = true;
-		info.menuList = "misc";
-		UIDropDownMenu_AddButton(info, level);
-
-		UIDropDownMenu_AddSeparator(level);
-
-		info.text = LLL["PRIORITY"]
-		info.hasArrow = true;
-		info.menuList = "priority";
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["MOVE_TO"]
-		info.hasArrow = true;
-		info.menuList = "move";
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["COPY_TO"]
-		info.hasArrow = true;
-		info.menuList = "copy";
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["DELETE"];
-		info.hasArrow = nil;
-		info.menuList = nil;
-		info.func = function()
-			ShowDeleteConfirmationPopup(elementData);
-		end
-		UIDropDownMenu_AddButton(info, level);
-	elseif (level == 2) then
-		if (menuList == "unit") then
+		if (menuList == "unitexists") then
 			info.hasArrow = nil;
 			info.menuList = nil;
 			info.notCheckable = nil;
-
 			if (action.type == Constants.TARGET or action.type == Constants.FOCUS or action.type == Constants.TOGGLEMENU) then
 
 			else
 				info.text = LLL["UNIT_DISABLE"];
-				info.checked = action.unit == nil;
+				info.checked = action.checkUnitExists == nil;
 				info.func = function()
-					action.unit = nil;
-					action._dirty = true;
+					action.checkUnitExists = nil;
 					DebouncePrivate.UpdateBindings();
+					--DebounceFrame:Update();
 				end
 				UIDropDownMenu_AddButton(info, level);
 			end
 
 			for _, unit in ipairs(SORTED_UNIT_LIST) do
 				local unitInfo = UNIT_INFOS[unit];
-				if (unitInfo[action.type] ~= false) then
+				if (unitInfo[menuList] ~= false) then
 					info.text = unitInfo.name .. (unitInfo.tooltipTitle and LLL["_HAS_TOOLTIP_SUFFIX"] or "");
 					info.tooltipTitle = unitInfo.tooltipTitle;
-					info.checked = action.unit == unit;
+					info.checked = action.checkUnitExists == unit;
 					info.func = function()
-						action.unit = unit;
-						action._dirty = true;
+						action.checkUnitExists = unit;
 						DebouncePrivate.UpdateBindings();
+						--DebounceFrame:Update();
 					end
 					UIDropDownMenu_AddButton(info, level);
 				end
@@ -2577,751 +3318,27 @@ local function EditDropDown_Initialize(dropdown, level, menuList)
 			info.tooltipInstruction = nil;
 			info.tooltipWarning = nil;
 			info.tooltipWhileDisabled = nil;
-
-			UIDropDownMenu_AddSeparator(level);
-
-			info.isNotRadio = true;
-			info.keepShownOnClick = true;
-			info.disabled = action.unit == nil or action.unit == "none";
-			info.text = LLL["ONLY_WHEN_UNIT_EXISTS"];
-			info.checked = action.checkUnitExists;
-			info.func = function(_, _, _, checked)
-				action.checkUnitExists = checked or nil;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.isNotRadio = nil;
-			info.keepShownOnClick = nil;
-			info.disabled = nil;
-		elseif (menuList == "hover") then
-			info.hasArrow = nil;
-			info.notCheckable = nil;
-			info.menuList = nil;
-			info.keepShownOnClick = true;
-
-			local FRAMETYPE_MASK = Constants.FRAMETYPE_ALL;
-			info.text = LLL["DISABLE"];
-			info.checked = function() return action.hover == nil end;
-			info.func = function()
-				action.hover = nil;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-				UIDropDownMenu_Refresh(dropdown);
-				updateDropdownButtons();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["WHEN_HOVERED"];
-			info.checked = function() return action.hover == true end;
-			info.func = function()
-				action.hover = true;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-				UIDropDownMenu_Refresh(dropdown);
-				updateDropdownButtons();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["WHEN_NOT_HOVERED"];
-			info.checked = function() return action.hover == false end;
-			info.func = function()
-				action.hover = false;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-				UIDropDownMenu_Refresh(dropdown);
-				updateDropdownButtons();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			UIDropDownMenu_AddSeparator(level);
-
-			info.isTitle = true;
-			info.notCheckable = 1;
-			info.notClickable = true;
-			info.text = LLL["REACTIONS"];
-			UIDropDownMenu_AddButton(info, level);
-			info.isTitle = nil;
-			info.notCheckable = nil;
-			info.notClickable = nil;
-
-			info.isNotRadio = true;
-			info.value = "reactions";
-			info.disabled = not action.hover;
-
-			for _, reaction in ipairs(UNIT_FRAME_REACTIONS) do
-				local flag = Constants["REACTION_" .. reaction];
-				info.text = LLL["REACTION_" .. reaction];
-				info.checked = function() return bit.band(action.reactions or Constants.REACTION_ALL, flag) == flag end;
-				info.func = function(_, _, _, checked)
-					if (checked) then
-						action.reactions = bit.bor(action.reactions or Constants.REACTION_ALL, flag);
-					else
-						action.reactions = bit.band(action.reactions or Constants.REACTION_ALL, bit.bnot(flag));
-					end
-					if (action.reactions == Constants.REACTION_ALL) then
-						action.reactions = nil;
-					end
-					action._dirty = true;
-					DebouncePrivate.UpdateBindings();
-					UIDropDownMenu_Refresh(dropdown);
-					updateDropdownButtons();
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-
-			info.value = nil;
-
-			UIDropDownMenu_AddSeparator(level);
-
-			info.isTitle = true;
-			info.notCheckable = 1;
-			info.notClickable = true;
-			info.text = LLL["FRAME_TYPES"];
-			UIDropDownMenu_AddButton(info, level);
-			info.isTitle = nil;
-			info.notCheckable = nil;
-			info.notClickable = nil;
-
-			info.isNotRadio = nil;
-			info.leftPadding = nil;
-
-			info.isNotRadio = true;
-			info.disabled = not action.hover;
-			info.value = "frameTypes";
-
-			for i = 1, #UNIT_FRAME_TYPES do
-				local frameType = UNIT_FRAME_TYPES[i];
-				local flag = Constants["FRAMETYPE_" .. frameType];
-				info.text = LLL["FRAMETYPE_" .. frameType];
-				info.checked = function() return action.frameTypes == nil or bit.band(action.frameTypes, flag) == flag end
-				info.func = function(_, _, _, checked)
-					if (checked) then
-						action.frameTypes = bit.bor(action.frameTypes or FRAMETYPE_MASK, flag);
-					else
-						action.frameTypes = bit.band(action.frameTypes or FRAMETYPE_MASK, bit.bnot(flag));
-					end
-					if (action.frameTypes == FRAMETYPE_MASK) then
-						action.frameTypes = nil;
-					end
-					action._dirty = true;
-					DebouncePrivate.UpdateBindings();
-					UIDropDownMenu_Refresh(dropdown);
-					--DebounceFrame:Update();
-					updateDropdownButtons();
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-			-- info.disabled = nil;
-
-			UIDropDownMenu_AddSeparator(level);
-
-			info.disabled = not action.hover;
-			info.text = LLL["IGNORE_HOVER_UNIT"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
-			info.value = "ignoreHoverUnit";
-			info.tooltipTitle = LLL["IGNORE_HOVER_UNIT_TIP"]
-			info.checked = function() return action.ignoreHoverUnit end
-			info.func = function(_, _, _, checked)
-				action.ignoreHoverUnit = checked or nil;
-				DebouncePrivate.UpdateBindings();
-				updateDropdownButtons();
-				UIDropDownMenu_Refresh(dropdown);
-			end
-			UIDropDownMenu_AddButton(info, level);
-			info.tooltipTitle = nil;
-
-			info.isNotRadio = nil;
-			info.keepShownOnClick = nil;
-			info.value = nil;
-		elseif (menuList == "group") then
-			info.hasArrow = nil;
-			info.notCheckable = nil;
-			info.menuList = nil;
-			info.keepShownOnClick = true;
-
-			info.text = LLL["DISABLE"];
-			info.checked = function() return action.groups == nil end
-			info.func = function()
-				action.groups = nil;
-				DebouncePrivate.UpdateBindings();
-				UIDropDownMenu_Refresh(dropdown);
-				updateDropdownButtons();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.isNotRadio = true;
-			info.keepShownOnClick = true;
-
-			for _, groupType in ipairs({ "NONE", "PARTY", "RAID" }) do
-				local flag = Constants["GROUP_" .. groupType];
-				info.text = LLL["GROUP_" .. groupType];
-				info.checked = function()
-					return action.groups and bit.band(action.groups, flag) == flag;
-				end
-				info.func = function(_, _, _, checked)
-					if (checked) then
-						action.groups = bit.bor(action.groups or 0, flag);
-					else
-						action.groups = bit.band(action.groups or 0, bit.bnot(flag));
-					end
-					-- if (action.groups == 0) then
-					-- 	action.groups = nil;
-					-- end
-					UIDropDownMenu_Refresh(dropdown);
-					DebouncePrivate.UpdateBindings();
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-		elseif (menuList == "combat") then
-			info.hasArrow = nil;
-			info.notCheckable = nil;
-			info.menuList = nil;
-
-			info.text = LLL["DISABLE"];
-			info.checked = action.combat == nil;
-			info.func = function()
-				action.combat = nil;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-				updateDropdownButtons();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["IN_COMBAT"];
-			info.checked = action.combat == true;
-			info.func = function()
-				action.combat = true;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-				updateDropdownButtons();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["NOT_IN_COMBAT"];
-			info.checked = action.combat == false;
-			info.func = function()
-				action.combat = false;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-				updateDropdownButtons();
-			end
-			UIDropDownMenu_AddButton(info, level);
-		elseif (menuList == "shapeshift") then
-			info.hasArrow = nil;
-			info.notCheckable = nil;
-			info.menuList = nil;
-			info.keepShownOnClick = true;
-
-			info.text = LLL["DISABLE"];
-			info.checked = function() return not action.forms; end
-			info.func = function()
-				action.forms = nil;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-				updateDropdownButtons();
-				UIDropDownMenu_Refresh(dropdown);
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			--for i = 0, GetNumShapeshiftForms() do
-			info.isNotRadio = true;
-			info.keepShownOnClick = true;
-
-			for i = 0, 10 do
-				local flag = (2 ^ i);
-				local shapeshiftName;
-				if (i == 0) then
-					shapeshiftName = LLL["NO_SHAPESHIFT"];
-				else
-					local _, _, _, spellID = GetShapeshiftFormInfo(i);
-					shapeshiftName = spellID and GetSpellInfo(spellID) or nil;
-				end
-
-				local text = format("[form:%d]", i);
-				if (shapeshiftName) then
-					text = format("%s (%s)", text, shapeshiftName);
-				end
-
-				info.text = text;
-				info.checked = function()
-					return action.forms and bit.band(action.forms, flag) == flag;
-				end
-				info.func = function(_, _, _, checked)
-					if (checked) then
-						action.forms = bit.bor(action.forms or 0, flag);
-					else
-						action.forms = bit.band(action.forms or 0, bit.bnot(flag));
-					end
-					UIDropDownMenu_Refresh(dropdown);
-					DebouncePrivate.UpdateBindings();
-					--DebounceFrame:Update();
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-
-			info.isNotRadio = nil;
-			info.keepShownOnClick = nil;
-		elseif (menuList == "actionbars") then
-			info.notCheckable = 1;
-
-			info.text = LLL["BONUSBAR"];
-			info.hasArrow = true;
-			info.menuList = "bonusbars";
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["SPECIALBAR"] .. LLL["_HAS_TOOLTIP_SUFFIX"];
-			info.hasArrow = true;
-			info.menuList = "specialbar";
-			info.tooltipTitle = LLL["SPECIALBAR"];
-			info.tooltipText = LLL["SPECIALBAR_DESC"];
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["EXTRABAR"];
-			info.hasArrow = true;
-			info.menuList = "extrabar";
-			UIDropDownMenu_AddButton(info, level);
-		elseif (menuList == "misc") then
-			info.notCheckable = 1;
-
-			info.text = LLL["STEALTH"];
-			info.hasArrow = true;
-			info.menuList = "stealth";
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["PET"];
-			info.hasArrow = true;
-			info.menuList = "pet";
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["PET_BATTLE"];
-			info.hasArrow = true;
-			info.menuList = "petbattle";
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["CUSTOM_STATES"];
-			info.hasArrow = true;
-			info.menuList = "customStates";
-			UIDropDownMenu_AddButton(info, level);
-		elseif (menuList == "priority") then
-			info.hasArrow = nil;
-			info.notCheckable = nil;
-			info.menuList = nil;
-
-			for i = 1, 5 do
-				info.text = LLL["PRIORITY" .. i];
-				info.value = i;
-				info.checked = (action.priority == nil and i == Constants.DEFAULT_PRIORITY) or action.priority == i;
-				info.func = function()
-					action.priority = i;
-					DebouncePrivate.UpdateBindings();
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-		elseif (menuList == "loadouts") then
-			--/DUMP C_ClassTalents.GetConfigIDsBySpecID(102)
-			info.hasArrow = nil;
-			info.menuList = nil;
-
-			local function addLoadoutOption(configID, configName, icon)
-				info.text = configName;
-				info.icon = icon;
-				info.value = configID;
-				info.checked = function()
-					return action.loadouts and action.loadouts[configID];
-				end
-				info.func = function(_, _, _, checked)
-					if (checked) then
-						action.loadouts = action.loadouts or {};
-						action.loadouts[configID] = true;
-					elseif (action.loadouts) then
-						action.loadouts[configID] = nil;
-					end
-					DebouncePrivate.UpdateBindings();
-					--DebounceFrame:Update();
-					UIDropDownMenu_Refresh(dropdown);
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-
-			info.text = LLL["DISABLE"];
-			info.checked = function() return action.loadouts == nil; end
-			info.func = function()
-				action.loadouts = nil;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.isTitle = nil;
-			info.notCheckable = nil;
-			info.isNotRadio = true;
-			info.keepShownOnClick = true;
-			info.disabled = nil
-
-			for spec = 1, NUM_SPECS do
-				local specID, specName, _, specIcon = GetSpecializationInfo(spec);
-				local configIDs = C_ClassTalents.GetConfigIDsBySpecID(specID);
-				if (C_ClassTalents.GetHasStarterBuild()) then
-					tinsert(configIDs, -spec);
-				end
-
-				for _, configID in ipairs(configIDs) do
-					local configName;
-					if (configID < 0) then
-						configName = BLUE_FONT_COLOR:WrapTextInColorCode(TALENT_FRAME_DROP_DOWN_STARTER_BUILD);
-					else
-						local configInfo = C_Traits.GetConfigInfo(configID);
-						configName = configInfo.name;
-					end
-					configName = format("%s (%s)", configName, specName);
-					addLoadoutOption(configID, configName, specIcon);
+		elseif (menuList == "stealth") then
+			addBooleanConditionButtons("STEALTH", "stealth");
+		elseif (menuList == "bonusbars") then
+			local optionsArray = {};
+			for i = 0, MAX_BONUS_ACTIONBAR_OFFSET do
+				local label = GetActionBarTypeLabel(i);
+				if (label) then
+					tinsert(optionsArray, { value = i, label = label });
 				end
 			end
-			info.icon = nil;
-			info.value = nil;
-			info.checked = nil;
-			info.func = nil;
 
-			UIDropDownMenu_AddSeparator(level);
-
-			info.text = LLL["TALENT_LOADOUTS_WHEN_NOT_SELECTED"];
-			info.checked = function() return action.excludeLoadouts end
-			info.func = function(_, _, _, checked)
-				action.excludeLoadouts = checked;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-			info.isTitle = nil;
-			info.notCheckable = nil;
-			info.disabled = nil
-
-			-- addLoadoutOptions(true);
-			info.keepShownOnClick = nil;
-			info.isNotRadio = nil;
-			info.icon = nil;
-		elseif (menuList == "move" or menuList == "copy") then
-			info.hasArrow = nil;
-			info.notCheckable = nil;
-			info.menuList = nil;
-
-			if (menuList == "copy") then
-				info.text = LLL["CURRENT_TAB"];
-				info.notCheckable = 1;
-				info.func = function()
-					local toLayerIndex = GetLayerID();
-					MoveAction(elementData, toLayerIndex, true);
-					CloseDropDownMenus(1);
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-
-			for i = 1, #DebounceFrame.Tabs do
-				for j = 1, #DebounceFrame.SideTabs do
-					if (i ~= _selectedTab or j ~= _selectedSideTab) then
-						local label1 = GetTabLabel(i);
-						local label2 = GetSideTabaLabel(j);
-
-						if (label1 and label2) then
-							info.text = format("%s - %s", label1, label2);
-							info.notCheckable = 1;
-							info.func = function()
-								local toLayerIndex = GetLayerID(i, j);
-								MoveAction(elementData, toLayerIndex, menuList == "copy");
-								CloseDropDownMenus(1);
-							end
-							UIDropDownMenu_AddButton(info, level);
-						end
-					end
-				end
-			end
+			addBitFlagsConditionButtons("BONUSBAR", "bonusbars", optionsArray);
+		elseif (menuList == "specialbar") then
+			addBooleanConditionButtons("SPECIALBAR", "specialbar");
+		elseif (menuList == "extrabar") then
+			addBooleanConditionButtons("EXTRABAR", "extrabar");
+		elseif (menuList == "pet") then
+			addBooleanConditionButtons("PET", "pet");
 		end
-	elseif (level == 3) then
-		if (menuList == "petbattle") then
-			info.hasArrow = nil;
-			info.notCheckable = nil;
-			info.menuList = nil;
-
-			info.text = LLL["DISABLE"];
-			info.checked = action.petbattle == nil;
-			info.func = function()
-				action.petbattle = nil;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["IN_PET_BATTLE"];
-			info.checked = action.petbattle == true;
-			info.func = function()
-				action.petbattle = true;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-
-			info.text = LLL["NOT_IN_PET_BATTLE"];
-			info.checked = action.petbattle == false;
-			info.func = function()
-				action.petbattle = false;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-		end
-	end
-
-	if (menuList == "customStates") then
-		info.notCheckable = 1;
-		for i = 1, Constants.MAX_NUM_CUSTOM_STATES do
-			info.text = format(LLL["CUSTOM_STATE_NUM"], i);
-			info.hasArrow = true;
-			info.menuList = "customState";
-			info.value = i;
-			UIDropDownMenu_AddButton(info, level);
-		end
-		info.value = nil;
-	elseif (menuList == "customState") then
-		local stateIndex = L_UIDROPDOWNMENU_MENU_VALUE;
-		local state = "$state" .. stateIndex;
-
-		info.text = format(LLL["CUSTOM_STATE_NUM"], stateIndex);
-		info.isTitle = true;
-		info.notCheckable = 1;
-		UIDropDownMenu_AddButton(info, level);
-		info.isTitle = nil;
-		info.disabled = nil;
-
-		info.hasArrow = nil;
-		info.notCheckable = nil;
-		info.menuList = nil;
-
-		info.text = LLL["DISABLE"];
-		info.checked = function() return action[state] == nil; end
-		info.func = function()
-			action[state] = nil;
-			DebouncePrivate.UpdateBindings();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["WHEN_STATE_IS_ON"];
-		info.checked = function() return action[state] == true; end
-		info.func = function()
-			action[state] = true;
-			DebouncePrivate.UpdateBindings();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["WHEN_STATE_IS_OFF"];
-		info.checked = function() return action[state] == false; end
-		info.func = function()
-			action[state] = false;
-			DebouncePrivate.UpdateBindings();
-		end
-		UIDropDownMenu_AddButton(info, level);
-	end
-
-	if (menuList == "unitexists") then
-		info.hasArrow = nil;
-		info.menuList = nil;
-		info.notCheckable = nil;
-		if (action.type == Constants.TARGET or action.type == Constants.FOCUS or action.type == Constants.TOGGLEMENU) then
-
-		else
-			info.text = LLL["UNIT_DISABLE"];
-			info.checked = action.checkUnitExists == nil;
-			info.func = function()
-				action.checkUnitExists = nil;
-				DebouncePrivate.UpdateBindings();
-				--DebounceFrame:Update();
-			end
-			UIDropDownMenu_AddButton(info, level);
-		end
-
-		for _, unit in ipairs(SORTED_UNIT_LIST) do
-			local unitInfo = UNIT_INFOS[unit];
-			if (unitInfo[menuList] ~= false) then
-				info.text = unitInfo.name .. (unitInfo.tooltipTitle and LLL["_HAS_TOOLTIP_SUFFIX"] or "");
-				info.tooltipTitle = unitInfo.tooltipTitle;
-				info.checked = action.checkUnitExists == unit;
-				info.func = function()
-					action.checkUnitExists = unit;
-					DebouncePrivate.UpdateBindings();
-					--DebounceFrame:Update();
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-		end
-		info.tooltipTitle = nil;
-		info.tooltipInstruction = nil;
-		info.tooltipWarning = nil;
-		info.tooltipWhileDisabled = nil;
-	elseif (menuList == "stealth") then
-		info.hasArrow = nil;
-		info.notCheckable = nil;
-		info.menuList = nil;
-
-		info.text = LLL["DISABLE"];
-		info.checked = action.stealth == nil;
-		info.func = function()
-			action.stealth = nil;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["STEALTHED"];
-		info.checked = action.stealth == true;
-		info.func = function()
-			action.stealth = true;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["NOT_STEALTHED"];
-		info.checked = action.stealth == false;
-		info.func = function()
-			action.stealth = false;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-	elseif (menuList == "bonusbars") then
-		info.keepShownOnClick = true;
-
-		info.text = LLL["DISABLE"];
-		info.checked = function() return not action.bonusbars; end
-		info.func = function()
-			action.bonusbars = nil;
-			DebouncePrivate.UpdateBindings();
-			updateDropdownButtons();
-			--DebounceFrame:Update();
-			UIDropDownMenu_Refresh(dropdown);
-			UIDropDownMenu_RefreshAll(L_UIDROPDOWNMENU_OPEN_MENU);
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.isNotRadio = true;
-
-		for i = 0, MAX_BONUS_ACTIONBAR_OFFSET do
-			local flag = (2 ^ i);
-			local label = GetActionBarTypeLabel(i);
-			if (label) then
-				info.text = label;
-				info.checked = function() return action.bonusbars and bit.band(action.bonusbars, flag) == flag; end
-				info.func = function(_, _, _, checked)
-					if (checked) then
-						action.bonusbars = bit.bor(action.bonusbars or 0, flag);
-					else
-						action.bonusbars = bit.band(action.bonusbars or 0, bit.bnot(flag));
-					end
-					UIDropDownMenu_Refresh(dropdown);
-					UIDropDownMenu_RefreshAll(L_UIDROPDOWNMENU_OPEN_MENU);
-					DebouncePrivate.UpdateBindings();
-					--DebounceFrame:Update();
-					updateDropdownButtons();
-				end
-				UIDropDownMenu_AddButton(info, level);
-			end
-		end
-	elseif (menuList == "specialbar") then
-		info.hasArrow = nil;
-		info.notCheckable = nil;
-		info.menuList = nil;
-
-		info.text = LLL["DISABLE"];
-		info.checked = action.specialbar == nil;
-		info.func = function()
-			action.specialbar = nil;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["WITH_SPECIALBAR"];
-		info.checked = action.specialbar == true;
-		info.func = function()
-			action.specialbar = true;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["WITHOUT_SPECIALBAR"];
-		info.checked = action.specialbar == false;
-		info.func = function()
-			action.specialbar = false;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-	elseif (menuList == "extrabar") then
-		info.hasArrow = nil;
-		info.notCheckable = nil;
-		info.menuList = nil;
-
-		info.text = LLL["DISABLE"];
-		info.checked = action.extrabar == nil;
-		info.func = function()
-			action.extrabar = nil;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["EXTRABAR_PRESENT"];
-		info.checked = action.extrabar == true;
-		info.func = function()
-			action.extrabar = true;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["EXTRABAR_NOT_PRESENT"];
-		info.checked = action.extrabar == false;
-		info.func = function()
-			action.extrabar = false;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-	elseif (menuList == "pet") then
-		info.hasArrow = nil;
-		info.notCheckable = nil;
-		info.menuList = nil;
-
-		info.text = LLL["DISABLE"];
-		info.checked = action.pet == nil;
-		info.func = function()
-			action.pet = nil;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["WITH_PET"];
-		info.checked = action.pet == true;
-		info.func = function()
-			action.pet = true;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
-
-		info.text = LLL["WITHOUT_PET"];
-		info.checked = action.pet == false;
-		info.func = function()
-			action.pet = false;
-			DebouncePrivate.UpdateBindings();
-			--DebounceFrame:Update();
-		end
-		UIDropDownMenu_AddButton(info, level);
 	end
 end
-
 function DebounceFrameMixin:ShowEditDropdown(button, atButton)
 	DebounceKeybindFrame:Hide();
 	HideDeleteConfirmationPopup();
@@ -4169,3 +4186,19 @@ function DebounceOverviewFrameMixin:Toggle()
 		self:Show();
 	end
 end
+
+function UIHelper.GetSelectedTab()
+	return _selectedTab;
+end
+
+function UIHelper.GetSelectedSideTab()
+	return _selectedSideTab;
+end
+
+UIHelper.GetLayerID = GetLayerID;
+UIHelper.GetTabLabel = GetTabLabel;
+UIHelper.GetSideTabaLabel = GetSideTabaLabel;
+UIHelper.MoveAction = MoveAction;
+UIHelper.ShowDeleteConfirmationPopup = ShowDeleteConfirmationPopup;
+UIHelper.NameAndIconFromElementData = NameAndIconFromElementData;
+UIHelper.UNIT_INFOS = UNIT_INFOS;

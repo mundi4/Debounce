@@ -2,7 +2,7 @@ local _, DebouncePrivate                  = ...;
 DebouncePrivate.Constants                 = {};
 local Constants                           = DebouncePrivate.Constants;
 
-Constants.DEBUG                           = false;
+Constants.DEBUG                           = true;
 Constants.NIL                             = "\0";
 Constants.DB_VERSION                      = 2;
 Constants.MAX_NUM_ACTIONS_PER_LAYER       = 1000;
@@ -106,7 +106,7 @@ Constants.BINDING_ISSUE_CLIQUE_DETECTED                   = "CLIQUE_DETECTED";
 Constants.BINDING_ISSUE_CANNOT_USE_HOVER_WITH_CLIQUE      = "CANNOT_USE_HOVER_WITH_CLIQUE";
 Constants.BINDING_ISSUE_FORMS_NONE_SELECTED               = "FORMS_NONE_SELECTED";
 Constants.BINDING_ISSUE_BONUSBARS_NONE_SELECTED           = "BONUSBARS_NONE_SELECTED";
-Constants.BINDING_ISSUE_GROUPS_NONE_SELECTED              = "GROUP_NONE_SELECTED";
+Constants.BINDING_ISSUE_GROUPS_NONE_SELECTED              = "GROUPS_NONE_SELECTED";
 Constants.BINDING_ISSUE_HOVER_NONE_SELECTED               = "HOVER_NONE_SELECTED";
 
 

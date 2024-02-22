@@ -2,6 +2,7 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/FrameXML/UI.xsd">
 
 	<Script file="DebounceUI.lua" />
+	<Script file="EditPopup.lua" />
 
 	<Frame name="DebounceActionPlacerFrame" parent="UIParent" frameStrata="DIALOG" alpha="0.5" hidden="true">
 		<Size x="450" y="46"/>
