@@ -2,6 +2,7 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/FrameXML/UI.xsd">
 
 	<Script file="DebounceUI.lua" />
+	<Script file="DropDownMenus.lua" />
 
 	<Frame name="DebounceActionPlacerFrame" parent="UIParent" frameStrata="DIALOG" alpha="0.5" hidden="true">
 		<Size x="450" y="46"/>
@@ -138,6 +139,61 @@
 		</Scripts>
 	</Button>
 
+	<Button name="DebouncePortraitTemplate" mixin="DebouncePortraitMixin" parentArray="FramePortraits" virtual="true">
+		<Size x="31" y="31"/>
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Portrait" file="Interface\WorldMap\GEAR_64GREY" setAllPoints="true"/>
+			</Layer>
+			<Layer level="BORDER">
+				<MaskTexture file="Interface\CharacterFrame\TempPortraitAlphaMask" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeKey="$parent.Icon" x="2" y="-2"/>
+						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.Icon" x="-2" y="2"/>
+					</Anchors>
+					<MaskedTextures>
+						<MaskedTexture childKey="Portrait"/>
+					</MaskedTextures>
+				</MaskTexture>
+			</Layer>
+			<Layer level="OVERLAY">
+				<Texture parentKey="Frame" atlas="Transmog-nav-slot-selected" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="UnselectedFrame" atlas="Transmog-nav-slot-selected" useAtlasSize="true" hidden="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<Color r="0" g="0" b="0" a="0.2"/>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY" textureSubLevel="1">
+				<Texture parentKey="UnselectedFrame" atlas="Transmog-nav-slot-selected" useAtlasSize="true" hidden="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<Color r="0" g="0" b="0" a="0.2"/>
+				</Texture>
+
+			</Layer>
+			<Layer level="HIGHLIGHT">
+				<Texture parentKey="Highlight" atlas="bags-roundhighlight" alphaMode="ADD">
+					<Size x="31" y="31"/>
+					<Anchors>
+						<Anchor point="CENTER" x="0" y="1"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+			<OnEnter method="OnEnter"/>
+			<OnLeave method="OnLeave"/>
+		</Scripts>
+	</Button>
+
 	<Button name="DebounceFrameTabTemplate" mixin="DebounceTabMixin" virtual="true" inherits="PanelTabButtonTemplate">
 		<Scripts>
 			<OnLoad method="OnLoad" inherit="append" />
@@ -181,6 +237,42 @@
 			<Anchor point="CENTER"/>
 		</Anchors>
 		<Frames>
+			<Button parentKey="OptionsPortrait" inherits="DebouncePortraitTemplate">
+				<KeyValues>
+					<KeyValue key="FrameName" value="MacroFrame" type="string"/>
+					<!-- <KeyValue key="PortraitTexture" value="Interface\WorldMap\GEAR_64GREY" type="string"/> -->
+					<!-- <KeyValue key="PortraitTexture" value="Interface\Icons\trade_engineering" type="string"/> -->
+					<KeyValue key="PortraitTexture" value="Interface\Icons\pet_type_mechanical" type="string"/>
+					pet_type_mechanical
+					<KeyValue key="TooltipTitle" value="OPTIONS" type="string"/>
+					<KeyValue key="DropDown" value="OptionsDropDown" type="string"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-40" y="-40"/>
+				</Anchors>
+			</Button>
+			<Button parentKey="CustomStatesPortrait" inherits="DebouncePortraitTemplate">
+				<KeyValues>
+					<KeyValue key="FrameName" value="SpellBookFrame" type="string"/>
+					<KeyValue key="PortraitTexture" value="254885" type="number"/>
+					<KeyValue key="TooltipTitle" value="CUSTOM_STATES" type="string"/>
+					<KeyValue key="TooltipText" value="CUSTOM_STATES_DESC" type="string"/>
+					<KeyValue key="DropDown" value="CustomStatesDropDown" type="string"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="RIGHT" relativeKey="$parent.OptionsPortrait" relativePoint="LEFT" x="-5" y="0"/>
+				</Anchors>
+			</Button>			
+			<Button parentKey="OverviewPortrait" inherits="DebouncePortraitTemplate">
+				<KeyValues>
+					<KeyValue key="FrameName" value="SpellBookFrame" type="string"/>
+					<KeyValue key="PortraitTexture" value="Interface\Icons\inv_misc_spyglass_03" type="string"/>
+					<KeyValue key="TooltipTitle" value="DEBOUNCE_OVERVIEW_TITLE" type="string"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="RIGHT" relativeKey="$parent.CustomStatesPortrait" relativePoint="LEFT" x="-5" y="0"/>
+				</Anchors>
+			</Button>
 			<Frame parentKey="ScrollBoxBackground" inherits="TooltipBackdropTemplate" frameLevel="2">
 				<Anchors>
 					<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="4" y ="535"/>
@@ -249,18 +341,6 @@
 				<Size x="90" y="23"/>
 				<Anchors>
 					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPLEFT" x="2" y="0"/>
-				</Anchors>
-			</Button>
-			<Button parentKey="OptionsButton" inherits="UIPanelButtonTemplate" text="OPTIONS">
-				<Size x="90" y="23"/>
-				<Anchors>
-					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPRIGHT" x="-2" y="0"/>
-				</Anchors>
-			</Button>
-			<Button parentKey="OverviewButton" inherits="UIPanelButtonTemplate" text="OVERVIEW">
-				<Size x="90" y="23"/>
-				<Anchors>
-					<Anchor point="RIGHT" relativeKey="$parent.OptionsButton" relativePoint="LEFT" x="-2" y="0"/>
 				</Anchors>
 			</Button>
 			<Button parentKey="Tab1" inherits="DebounceFrameTabTemplate" text="GENERAL" id="1">

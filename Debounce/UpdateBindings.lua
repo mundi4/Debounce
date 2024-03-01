@@ -349,7 +349,7 @@ function SetBindingAttributes(type, value, unit, buttonname)
         assert(buttonname == nil);
         buttonname = BindingAttrsCache[type] and BindingAttrsCache[type][value or NIL];
         clickframe = DefaultClickFrame;
-        delegate = unit and DebouncePrivate.GetDelegateFrame(unit) or nil;
+        delegate = unit and unit ~= "" and DebouncePrivate.GetDelegateFrame(unit) or nil;
     end
 
     if (not buttonname or skipCache) then
@@ -372,14 +372,13 @@ function SetBindingAttributes(type, value, unit, buttonname)
             else
                 clickframe:SetAttribute("*spell-" .. buttonname, spellID);
             end
-            
+
             -- what if 'IsPressHoldReleaseSpell' value is changed by a talent or something? is there a such situation?
             local isPressAndHold = IsPressHoldReleaseSpell(value);
             if (isPressAndHold) then
                 clickframe:SetAttribute("*typerelease-" .. buttonname, "spell");
-                clickframe:SetAttribute("*pressAndHoldAction-"..buttonname, true);
+                clickframe:SetAttribute("*pressAndHoldAction-" .. buttonname, true);
             end
-            
         elseif (type == Constants.ITEM) then
             value = format("item:%d", value);
             clickframe:SetAttribute("*type-" .. buttonname, "item");
@@ -437,7 +436,7 @@ function SetBindingAttributes(type, value, unit, buttonname)
             return;
         end
 
-        if (unit and not delegate) then
+        if (unit and unit ~= "" and not delegate) then
             if (DEBUG) then
                 print("No delegate frame for:", unit);
             end
@@ -455,6 +454,13 @@ function SetBindingAttributes(type, value, unit, buttonname)
 
     return delegate or clickframe, buttonname;
 end
+
+local UnitStateFlags = {
+    [true] = 1,
+    [false] = 1,
+    ["help"] = 2,
+    ["harm"] = 4,
+};
 
 function UpdateBindingsMap()
     appendLine("local bindings,t");
@@ -566,7 +572,7 @@ t.clickAttrs["%1$smacrotext%2$d"]="/click %3$s %4$s %5$s"
                             _updateFlags.unitframe = true;
                         end
 
-                        if (binding.groups ~= nil) then
+                        if (binding.groups ~= nil and binding.groups ~= Constants.GROUP_ALL) then
                             appendKeyValue("groups", binding.groups);
                             _updateFlags.group = true;
                         end
@@ -581,12 +587,12 @@ t.clickAttrs["%1$smacrotext%2$d"]="/click %3$s %4$s %5$s"
                             _updateFlags.stealth = true;
                         end
 
-                        if (binding.forms ~= nil) then
+                        if (binding.forms ~= nil and binding.forms ~= Constants.FORM_ALL) then
                             appendKeyValue("forms", binding.forms);
                             _updateFlags.form = true;
                         end
 
-                        if (binding.bonusbars ~= nil) then
+                        if (binding.bonusbars ~= nil and binding.bonusbars ~= Constants.BONUSBAR_ALL) then
                             appendKeyValue("bonusbars", binding.bonusbars);
                             _updateFlags.bonusbar = true;
                         end
@@ -611,11 +617,19 @@ t.clickAttrs["%1$smacrotext%2$d"]="/click %3$s %4$s %5$s"
                             _updateFlags.petbattle = true;
                         end
 
-                        if (binding.checkUnitExists) then
-                            appendKeyValue("checkUnitExists", binding.checkUnitExists);
-                            local existsKey = binding.checkUnitExists .. "-exists";
-                            _updateFlags[existsKey] = true;
-                            _unitStates[binding.checkUnitExists] = true;
+                        -- if (binding.checkUnitExists) then
+                        --     appendKeyValue("checkUnitExists", binding.checkUnitExists);
+                        --     local existsKey = binding.checkUnitExists .. "-exists";
+                        --     _updateFlags[existsKey] = true;
+                        --     _unitStates[binding.checkUnitExists] = true;
+                        -- end
+
+                        if (binding.checkedUnit) then
+                            appendKeyValue("checkedUnit", binding.checkedUnit);
+                            appendKeyValue("checkedUnitValue", binding.checkedUnitValue);
+                            _unitsSeen[binding.checkedUnit] = true;
+                            _unitStates[binding.checkedUnit] = bor(_unitStates[binding.checkedUnit] or 0, UnitStateFlags[binding.checkedUnitValue]);
+                            _updateFlags[binding.checkedUnit .. "-exists"] = true;
                         end
 
                         local customStatesTblCreated;
@@ -815,10 +829,8 @@ end
 function UpdateAttrChangedHandler()
     appendLine([[
 if (name == "state-unitexists") then
-if (value == 0) then return end
-self:SetAttribute("state-unitexists", 0)
-
-
+    if (value == 0) then return end
+    self:SetAttribute("state-unitexists", 0)
 ]]);
 
     -- Update States
@@ -856,14 +868,42 @@ self:SetAttribute("state-unitexists", 0)
     end
 
     -- Update Unit States
-    for unit, _ in pairs(_unitStates) do
+    for unit, flags in pairs(_unitStates) do
         if (unit == "custom1" or unit == "custom2") then
-            appendLine("stateValue=UnitMap[%1$q] and UnitExists(UnitMap[%1$q])", unit);
+            appendLine("stateValue=UnitMap[%1$q] and UnitExists(UnitMap[%1$q]) and (", unit);
+            local tmp = {};
+            if (band(flags, UnitStateFlags.help) == UnitStateFlags.help) then
+                tinsert(tmp, format([[(PlayerCanAssist(UnitMap[%1$q]) and "help")]], unit));
+            end
+            if (band(flags, UnitStateFlags.harm) == UnitStateFlags.harm) then
+                tinsert(tmp, format([[(PlayerCanAttack(UnitMap[%1$q]) and "harm")]], unit));
+            end
+            tinsert(tmp, format([[true]], unit));
+            appendLine(table.concat(tmp, " or ") .. ") or false");
         elseif (SPECIAL_UNITS[unit]) then
-            appendLine("stateValue=UnitMap[%1$q] and true or false", unit);
+            appendLine("stateValue=UnitMap[%1$q] and (", unit);
+            local tmp = {};
+            if (band(flags, UnitStateFlags.help) == UnitStateFlags.help) then
+                tinsert(tmp, format([[(PlayerCanAssist(UnitMap[%1$q]) and "help")]], unit));
+            end
+            if (band(flags, UnitStateFlags.harm) == UnitStateFlags.harm) then
+                tinsert(tmp, format([[(PlayerCanAttack(UnitMap[%1$q]) and "harm")]], unit));
+            end
+            tinsert(tmp, format([[true]], unit));
+            appendLine(table.concat(tmp, " or ") .. ") or false");
         else
-            appendLine("stateValue=UnitExists(%1$q)", unit);
+            appendLine("stateValue=UnitExists(%q) and (", unit);
+            local tmp = {};
+            if (band(flags, UnitStateFlags.help) == UnitStateFlags.help) then
+                tinsert(tmp, format([[(PlayerCanAssist(%1$q) and "help")]], unit));
+            end
+            if (band(flags, UnitStateFlags.harm) == UnitStateFlags.harm) then
+                tinsert(tmp, format([[(PlayerCanAttack(%1$q) and "harm")]], unit));
+            end
+            tinsert(tmp, format([[true]], unit));
+            appendLine(table.concat(tmp, " or ") .. ") or false");
         end
+        --appendLine([[print(%1$q, stateValue, UnitMap[%1$q])]], unit)
         appendLine([[if (UnitStates[%1$q] ~= stateValue) then UnitStates[%1$q]=stateValue;DirtyFlags["%1$s-exists"]=true; end]], unit);
     end
 
@@ -891,7 +931,8 @@ if (shouldUpdate) then
     --self:CallMethod("print", "Call UpdateBindings()")
     self:RunAttribute("UpdateBindings")
 end
-]])
+]]);
+
     appendLine([[end]]);
 
     local snippet = table.concat(_strArr, "\n");
@@ -902,4 +943,3 @@ end
     end
     wipe(_strArr);
 end
-

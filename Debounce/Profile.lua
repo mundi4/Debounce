@@ -28,6 +28,8 @@ local KEYS_TO_SAVE       = {
     priority = true,
     checkUnitExists = true,
     ignoreHoverUnit = true,
+    checkedUnit = true,
+    checkedUnitValue = true, -- true, false, help, harm
 };
 
 
@@ -132,11 +134,11 @@ local function LoadLayer(layerID)
         tbl = tbl[layerInfo.spec];
     end
 
-    if (dbver == 1) then
-        for _, action in ipairs(tbl) do
-            if (action.reactions and type(action.reactions) == "number") then
-
-            end
+    for _, action in ipairs(tbl) do
+        if (action.checkUnitExists and (Constants.BASIC_UNITS[action.unit] or Constants.SPECIAL_UNITS[action.unit])) then
+            action.checkedUnit = true;
+            action.checkedUnitValue = true;
+            action.checkUnitExists = nil;
         end
     end
 

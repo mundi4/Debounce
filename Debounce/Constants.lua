@@ -9,7 +9,7 @@ Constants.MAX_NUM_ACTIONS_PER_LAYER       = 1000;
 Constants.CLICKBINDING_NON_MOD_PREFIX     = ""; -- "" or "*"
 Constants.STATE_DRIVER_UPDATETIME_DEFAULT = 0.2;
 Constants.PLAYER_CLASS                    = select(2, UnitClass("player"));
-        
+
 -- 같은 키로 지정된 여러개의 action들을 하나의 매크로로 조합. 이 경우 상태 변경을 감지하지 않아도 된다.
 -- 일부 조건(mouseover 등)은 상태 변경을 즉각적으로 감지할 수 없기 때문에 상태 변경 감지에 의존하는 건 딜레이가 생길 수 있다.(기본 wow 코드 상으로는 최대 0.2초)
 -- 하나의 매크로로 조합하게 되면 조건 체크가 단축키를 누르는 순간 이루어지기때문에 위의 문제가 사라진다.
@@ -63,18 +63,20 @@ Constants.MACROTEXT_ARG_UNIT         = 1;
 Constants.MACROTEXT_ARG_CUSTOM_STATE = 2;
 
 
+Constants.MAX_BONUS_ACTIONBAR_OFFSET = 5;
+
 -- Priority Values
-Constants.DEFAULT_PRIORITY    = 3;
+Constants.DEFAULT_PRIORITY           = 3;
 
-Constants.GROUP_NONE          = 2 ^ 0;
-Constants.GROUP_PARTY         = 2 ^ 1;
-Constants.GROUP_RAID          = 2 ^ 2;
-Constants.GROUP_ALL           = 2 ^ 3 - 1;
+Constants.GROUP_NONE                 = 2 ^ 0;
+Constants.GROUP_PARTY                = 2 ^ 1;
+Constants.GROUP_RAID                 = 2 ^ 2;
+Constants.GROUP_ALL                  = 2 ^ 3 - 1;
 
-Constants.FORM_ALL            = 2 ^ 11 - 1;
+Constants.FORM_ALL                   = 2 ^ 11 - 1;
 
-Constants.MAX_BONUSBAR_OFFSET = 5;
-Constants.BONUSBAR_ALL        = 2 ^ (Constants.MAX_BONUSBAR_OFFSET + 1) - 1;
+Constants.MAX_BONUSBAR_OFFSET        = 5;
+Constants.BONUSBAR_ALL               = 2 ^ (Constants.MAX_BONUSBAR_OFFSET + 1) - 1;
 
 
 -- Unit Frame Reactions
@@ -106,11 +108,21 @@ Constants.BINDING_ISSUE_CLIQUE_DETECTED                   = "CLIQUE_DETECTED";
 Constants.BINDING_ISSUE_CANNOT_USE_HOVER_WITH_CLIQUE      = "CANNOT_USE_HOVER_WITH_CLIQUE";
 Constants.BINDING_ISSUE_FORMS_NONE_SELECTED               = "FORMS_NONE_SELECTED";
 Constants.BINDING_ISSUE_BONUSBARS_NONE_SELECTED           = "BONUSBARS_NONE_SELECTED";
-Constants.BINDING_ISSUE_GROUPS_NONE_SELECTED              = "GROUP_NONE_SELECTED";
+Constants.BINDING_ISSUE_GROUPS_NONE_SELECTED              = "GROUPS_NONE_SELECTED";
 Constants.BINDING_ISSUE_HOVER_NONE_SELECTED               = "HOVER_NONE_SELECTED";
 
 
-local SPECIAL_UNITS     = {
+local BASIC_UNITS                                   = {
+    mouseover = 1,
+    player = 2,
+    pet = 3,
+    target = 4,
+    focus = 5,
+    none = 6,
+    --[""] = 8,
+};
+
+local SPECIAL_UNITS                                 = {
     tank = 1,
     healer = 2,
     maintank = 3,
@@ -120,20 +132,8 @@ local SPECIAL_UNITS     = {
     hover = 7,
 };
 
-Constants.SPECIAL_UNITS = SPECIAL_UNITS;
-
-local BASIC_UNITS       = {
-    mouseover = 11,
-    player = 12,
-    pet = 13,
-    target = 14,
-    focus = 15,
-    none = 16,
-    [""] = 17,
-};
-
-Constants.BASIC_UNITS   = BASIC_UNITS;
-
+Constants.BASIC_UNITS                               = BASIC_UNITS;
+Constants.SPECIAL_UNITS                             = SPECIAL_UNITS;
 
 Constants.MAX_BOSSES                                = 8;
 
@@ -154,7 +154,6 @@ for i = 1, MAX_ARENA_ENEMIES do
 end
 
 
-
 if (Constants.DEBUG) then
     if (_G.DevTool and _G.DevTool.AddData) then
         local DevTool = _G.DevTool;
@@ -168,5 +167,6 @@ if (Constants.DEBUG) then
         end
     end
 end
+
 DebouncePrivate.dump = DebouncePrivate.dump or function() end
 DebouncePrivate.dump("DebouncePrivate", DebouncePrivate);
