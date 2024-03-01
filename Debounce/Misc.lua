@@ -58,6 +58,8 @@ do
             binding.checkUnitExists = action.checkUnitExists;
             binding.key = action.key;
             binding.priority = action.priority or Constants.DEFAULT_PRIORITY;
+            binding.checkedUnit = action.checkedUnit;
+            binding.checkedUnitValue = action.checkedUnitValue;
 
             for stateIndex = 1, Constants.MAX_NUM_CUSTOM_STATES do
                 local state = "$state" .. stateIndex;
@@ -78,16 +80,28 @@ do
                 binding.ignoreHoverUnit = nil;
             end
 
+            if (binding.checkedUnit == nil or binding.checkedUnitValue == nil) then
+                binding.checkedUnit = nil;
+                binding.checkedUnitValue = nil;
+            elseif (binding.checkedUnit == true) then
+                if (binding.unit == nil or binding.unit == "none") then
+                    binding.checkedUnit = nil;
+                    binding.checkedUnitValue = nil;
+                else
+                    binding.checkedUnit = binding.unit;
+                end
+            end
+
             if (binding.groups and band(binding.groups, Constants.GROUP_ALL) == Constants.GROUP_ALL) then
-                binding.groups = nil;
+                binding.groups = Constants.GROUP_ALL;
             end
 
             if (binding.forms and band(binding.forms, Constants.FORM_ALL) == Constants.FORM_ALL) then
-                binding.forms = nil;
+                binding.forms = Constants.FORM_ALL;
             end
 
             if (binding.bonusbars and band(binding.bonusbars, Constants.BONUSBAR_ALL) == Constants.BONUSBAR_ALL) then
-                binding.bonusbars = nil;
+                binding.bonusbars = Constants.BONUSBAR_ALL;
             end
 
             if (binding.type ~= Constants.SPELL and
@@ -118,15 +132,11 @@ do
                 binding.specialbar = nil;
             end
 
-            if (binding.hover) then
+            if (binding.hover and binding.unit == nil) then
                 if (binding.ignoreHoverUnit) then
-                    if (binding.unit == nil) then
-                        binding.unit = "";
-                    end
+                    binding.unit = "";
                 else
-                    if (binding.unit == nil) then
-                        binding.unit = "hover";
-                    end
+                    binding.unit = "hover";
                 end
             end
         end
@@ -213,7 +223,15 @@ function DebouncePrivate.IsConditionalBinding(binding)
         return true;
     end
 
+    if (binding.pet ~= nil) then
+        return true;
+    end
+
     if (binding.checkUnitExists) then
+        return true;
+    end
+
+    if (binding.checkedUnit) then
         return true;
     end
 
@@ -287,8 +305,8 @@ function DebouncePrivate.GetBindingIssue(action, category, notCategory)
                 issue = Constants.BINDING_ISSUE_CANNOT_USE_HOVER_WITH_CLIQUE;
             elseif (binding.hover and (binding.reactions == 0 or binding.frameTypes == 0)) then
                 issue = Constants.BINDING_ISSUE_HOVER_NONE_SELECTED;
-            elseif (binding.hover == false and (binding.checkUnitExists == "hover")) then
-                issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
+            -- elseif (binding.hover == false and (binding.checkedUnit == "hover" and binding.checkedUnitValue)) then
+            --     issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
             end
         end
     end
@@ -312,6 +330,14 @@ function DebouncePrivate.GetBindingIssue(action, category, notCategory)
     if (not issue and (not category or category == "unit") and notCategory ~= "unit") then
         if (binding.unit == "hover" and DebouncePrivate.CliqueDetected) then
             issue = Constants.BINDING_ISSUE_CANNOT_USE_HOVER_WITH_CLIQUE;
+        end
+    end
+
+    if (not issue and (not category or category == "checkedUnit") and notCategory ~= "checkedUnit") then
+        if (binding.hover == false and binding.checkedUnit == "hover" and binding.checkedUnitValue) then
+            issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
+        elseif (binding.hover and binding.checkedUnit == "hover" and binding.checkedUnitValue == false) then
+            issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
         end
     end
 
@@ -460,17 +486,63 @@ do
                 return boolToConditionFlags(action.petbattle);
             end
         },
+        -- {
+        --     name = "unit",
+        --     make = function(action)
+        --         local unit = action.checkUnitExists;
+        --         if (unit) then
+        --             local unitIndex = SPECIAL_UNITS[unit] or BASIC_UNITS[unit];
+        --             if (unitIndex) then
+        --                 return 2 ^ unitIndex;
+        --             end
+        --         end
+        --         return 0xfffffff;
+        --     end
+        -- },
         {
-            name = "unit",
+            name = "basicunit",
             make = function(action)
-                local unit = action.checkUnitExists;
-                if (unit) then
-                    local unitIndex = SPECIAL_UNITS[unit] or BASIC_UNITS[unit];
-                    if (unitIndex) then
-                        return 2 ^ unitIndex;
+                local unitIndex = BASIC_UNITS[action.checkedUnit];
+                if (unitIndex) then
+                    local flag;
+                    if (action.checkedUnitValue == true) then
+                        flag = 2 ^ 3 - 1;
+                    elseif (action.checkedUnitValue == "help") then
+                        flag = 2 ^ 1;
+                    elseif (action.checkedUnitValue == "harm") then
+                        flag = 2 ^ 2;
+                    else
+                        flag = 2 ^ 3;
                     end
+                    if (unitIndex > 1) then
+                        flag = lshift(flag, (unitIndex - 1) * 4);
+                    end
+                    return flag;
                 end
-                return 0xfffffff;
+                return 0xffffffff;
+            end
+        },
+        {
+            name = "specialunit",
+            make = function(action)
+                local unitIndex = SPECIAL_UNITS[action.checkedUnit];
+                if (unitIndex) then
+                    local flag;
+                    if (action.checkedUnitValue == true) then
+                        flag = 2 ^ 3 - 1;
+                    elseif (action.checkedUnitValue == "help") then
+                        flag = 2 ^ 1;
+                    elseif (action.checkedUnitValue == "harm") then
+                        flag = 2 ^ 2;
+                    else
+                        flag = 2 ^ 3;
+                    end
+                    if (unitIndex > 1) then
+                        flag = lshift(flag, (unitIndex - 1) * 4);
+                    end
+                    return flag;
+                end
+                return 0xffffffff;
             end
         },
         {
@@ -1251,7 +1323,7 @@ local function CustomStatesChangedCallback()
 
                 if (options and options.displayMessage) then
                     local stateText = format(L["CUSTOM_STATE_NUM"], stateIndex);
-                    local valueText = newValue and L["STATE_ON"] or L["STATE_OFF"];
+                    local valueText = newValue and L["STATE_CHANGED_MESSAGE_ON"] or L["STATE_CHANGED_MESSAGE_OFF"];
                     DebouncePrivate.DisplayMessage(format(L["STATE_CHANGED_MESSAGE"], stateText, valueText));
                 end
             end
