@@ -139,6 +139,7 @@ end
 
 EventFrame:RegisterEvent("ADDON_LOADED");
 EventFrame:RegisterEvent("PLAYER_LOGIN");
+EventFrame:RegisterEvent("ADDON_LOADED");
 
 EventFrame:SetScript("OnEvent", function(_, event, ...)
     if (Events[event]) then
