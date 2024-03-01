@@ -1353,7 +1353,7 @@ function DebouncePrivate.DisplayMessage(message, r, g, b)
 end
 
 function DebouncePrivate.ApplyOptions(option)
-    if (option == "unitframeUseMouseDown") then
+    if (option == true or option == "unitframeUseMouseDown") then
         if (not DebouncePrivate.CliqueDetected) then
             local trigger = DebouncePrivate.Options.unitframeUseMouseDown and "AnyDown" or "AnyUp";
             for frame in pairs(DebouncePrivate.ccframes) do

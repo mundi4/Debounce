@@ -156,9 +156,10 @@ function DebouncePrivate.UpdateRegisteredClicks(button)
         return
     end
 
-    local trigger = DebouncePrivate.Options.unitframeUseMouseDown and "AnyDown" or "AnyUp";
+    -- 애드온이 다 로드되지 않은 상태에서 호출이 된다?
+    -- 일단 급하게 픽스
+    local trigger = DebouncePrivate.Options and DebouncePrivate.Options.unitframeUseMouseDown and "AnyDown" or "AnyUp";
     button:RegisterForClicks(trigger);
-    
     button:EnableMouseWheel(true);
 end
 

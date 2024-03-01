@@ -17,6 +17,7 @@ function Events.PLAYER_LOGIN()
     EventFrame:RegisterEvent("UPDATE_BINDINGS");
     EventFrame:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED");
     EventFrame:RegisterEvent("CVAR_UPDATE");
+    DebouncePrivate.ApplyOptions(true);
     DebouncePrivate.UpdateBlizzardFrames(true);
     Events.ACTIVE_PLAYER_SPECIALIZATION_CHANGED();
 
