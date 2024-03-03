@@ -1,0 +1,10 @@
+package-as: Debounce
+
+enable-nolib-creation: no
+
+externals:
+  Libs/!LibUIDropDownMenu: https://repos.curseforge.com/wow/libuidropdownmenu/trunk
+
+move-folders:
+  Debounce/Debounce: Debounce
+  Debounce/DebounceCliqueFake: DebounceCliqueFake
