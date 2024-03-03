@@ -11,9 +11,8 @@
 ## Notes: Key Bindings and a Little More.|n|nSlash Command: |cffffff00/deb|r
 ## X-Curse-Project-ID: 970278
 
-Libs\libs.xml
-
-Locales\locales.xml
+libs.xml
+locales.xml
 
 Debounce.xml
 DebounceUI.xml
