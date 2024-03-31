@@ -209,6 +209,12 @@ end
 
 if (not DebouncePrivate.CliqueDetected) then
     hooksecurefunc("CompactUnitFrame_SetUpFrame", function(frame)
+        -- error : calling 'GetName' on bad self (Usage: local name = self:GetName())
+        -- i don't know why `frame:GetName()` fails.
+        if (frame.ignoreCUFNameRequirement) then
+            return;
+        end
+
         local category = DebouncePrivate.blizzardFrames[frame];
         if (category == nil) then
             local name = frame:GetName();
