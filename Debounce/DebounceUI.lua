@@ -204,6 +204,20 @@ local function HideAnyDropDownMenu()
 	return false;
 end
 
+local function DoesAncestryIncludeMouseFocus(ancestry)
+	if (GetMouseFocus) then
+		return DoesAncestryInclude(ancestry, GetMouseFocus())
+	else
+		local mouseFoci = GetMouseFoci();
+		for _, mouseFocus in ipairs(mouseFoci) do
+			if (DoesAncestryInclude(ancestry, mouseFocus)) then -- and (mouseFocus:GetObjectType() ~= "Button")
+				return true;
+			end
+		end
+		return false;
+	end
+end
+
 local function IsEditingMacro(elementData)
 	if (DebounceMacroFrame:IsShown() and (elementData == nil or DebounceMacroFrame.elementData == elementData)) then
 		return true;
@@ -1503,18 +1517,12 @@ end
 function DebounceFrameMixin:OnEvent(event, arg1)
 	if (event == "GLOBAL_MOUSE_UP") then
 		if (arg1 == "LeftButton" and IsDraggingElement()) then
-			if (_placeholder) then
-				local mouseFoci = GetMouseFoci();
-				for _, mouseFocus in ipairs(mouseFoci) do
-					if (DoesAncestryInclude(self.ScrollBox, mouseFocus)) then -- and (mouseFocus:GetObjectType() ~= "Button")
-						self:OnReceiveDrag();
-						return;
-					end
-				end
+			if (_placeholder and DoesAncestryIncludeMouseFocus(self.ScrollBox)) then
+				self:OnReceiveDrag();
+			else
+				self:ClearPlaceHolder();
+				self:ClearMouse();
 			end
-
-			self:ClearPlaceHolder();
-			self:ClearMouse();
 		end
 	elseif (event == "GLOBAL_MOUSE_DOWN") then
 		if (arg1 == "RightButton") then
@@ -1921,16 +1929,12 @@ function DebounceKeybindFrameMixin:OnKeyDown(key)
 		return;
 	end
 
-	local mouseFoci = GetMouseFoci();
-	for _, mouseFocus in ipairs(mouseFoci) do
-		if (DoesAncestryInclude(self, mouseFocus)) then
-			self:SetPropagateKeyboardInput(false);
-			self:ProcessInput(key);
-			return
-		end
+	if (DoesAncestryIncludeMouseFocus(self)) then
+		self:SetPropagateKeyboardInput(false);
+		self:ProcessInput(key);
+	else
+		self:SetPropagateKeyboardInput(true);
 	end
-
-	self:SetPropagateKeyboardInput(true);
 
 	-- if (self:IsMouseOver()) then
 	-- 	self:SetPropagateKeyboardInput(false);

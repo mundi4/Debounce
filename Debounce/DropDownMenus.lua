@@ -24,9 +24,11 @@ local USE_CHECKED_VALUE                       = {};
 
 local function UIDropDownMenu_RefreshAll(frame)
     frame = frame or L_UIDROPDOWNMENU_OPEN_MENU;
-    LibDD.UIDropDownMenu_RefreshAll(LibDD, frame);
-    if (frame.onRefresh) then
-        frame.onRefresh(frame);
+    if (frame) then
+        LibDD.UIDropDownMenu_RefreshAll(LibDD, frame);
+        if (frame.onRefresh) then
+            frame.onRefresh(frame);
+        end
     end
 end
 
@@ -230,6 +232,7 @@ do
                         notCheckable = true,
                         func = function()
                             DebounceFrame:AddNewAction(Constants.SETCUSTOM, i);
+                            CloseDropDownMenus();
                         end,
 
                     }
@@ -243,6 +246,7 @@ do
                     local callback = function(_, mode)
                         local value = bit.bor(mode, stateIndex);
                         DebounceFrame:AddNewAction(Constants.SETSTATE, value);
+                        CloseDropDownMenus();
                     end
 
                     local label = format(LLL["CUSTOM_STATE_NUM"], stateIndex);
@@ -256,6 +260,12 @@ do
                                 notCheckable = true,
                             },
                             {
+                                text = LLL["CUSTOM_STATE_TOGGLE"],
+                                notCheckable = true,
+                                func = callback,
+                                arg1 = Constants.SETCUSTOM_MODE_TOGGLE,
+                            },
+                            {
                                 text = LLL["CUSTOM_STATE_TURN_ON"],
                                 notCheckable = true,
                                 func = callback,
@@ -266,12 +276,6 @@ do
                                 notCheckable = true,
                                 func = callback,
                                 arg1 = Constants.SETCUSTOM_MODE_OFF,
-                            },
-                            {
-                                text = LLL["CUSTOM_STATE_TOGGLE"],
-                                notCheckable = true,
-                                func = callback,
-                                arg1 = Constants.SETCUSTOM_MODE_TOGGLE,
                             },
                         }
                     };
@@ -359,6 +363,7 @@ do
                                 notCheckable = true,
                                 func = function()
                                     DebounceFrame:AddNewAction(Constants.COMMAND, command);
+                                    CloseDropDownMenus();
                                 end,
                             };
                         end));
@@ -408,6 +413,7 @@ do
                                 notCheckable = true,
                                 func = function()
                                     DebounceFrame:AddNewAction(Constants.WORLDMARKER, index);
+                                    CloseDropDownMenus();
                                 end
                             };
                         end),
@@ -417,6 +423,7 @@ do
                         notCheckable = true,
                         func = function()
                             DebounceFrame:AddNewAction(Constants.UNUSED);
+                            CloseDropDownMenus();
                         end,
                         tooltipText = LLL["TYPE_UNUSED_DESC"],
                     },
@@ -432,6 +439,7 @@ do
                                         notCheckable = true,
                                         func = function()
                                             DebounceFrame:AddNewAction(type, nil, nil, nil, { unit = unit });
+                                            CloseDropDownMenus();
                                         end,
                                         tooltipText = unitInfo.tooltipTitle,
                                         tooltipWarning = unitInfo.tooltipWarning,

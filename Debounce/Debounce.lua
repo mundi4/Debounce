@@ -28,7 +28,7 @@ SecureHandlerExecute(BindingDriver, [[
 	DelegateFrames = newtable()
 	DelegateFrameNames = newtable()
 ]]);
-DebouncePrivate.BindingDriver = BindingDriver;
+DebouncePrivate.BindingDriver       = BindingDriver;
 
 DebouncePrivate.ClickDelegateFrames = {};
 
