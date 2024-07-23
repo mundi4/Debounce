@@ -14,6 +14,22 @@ local GetMountInfoByID        = C_MountJournal.GetMountInfoByID;
 
 local GetSpellSubtext         = C_Spell.GetSpellSubtext;
 
+function DebouncePrivate.GetSpellNameAndIconID(spellId)
+    local spellInfo = C_Spell.GetSpellInfo(spellId);
+    if (spellInfo) then
+        return spellInfo.name, spellInfo.iconID;
+    end
+end
+local GetSpellNameAndIconID = DebouncePrivate.GetSpellNameAndIconID;
+
+function DebouncePrivate.GetSpellTabNameAndIcon(index)
+    local skillLineInfo = C_SpellBook.GetSpellBookSkillLineInfo(index);
+    if skillLineInfo then
+        return skillLineInfo.name, skillLineInfo.iconID;
+    end
+end
+local GetSpellTabNameAndIcon = DebouncePrivate.GetSpellTabNameAndIcon;
+
 function DebouncePrivate.GetSetCustomStateModeAndIndex(value)
     local modeFlag = band(value, Constants.SETCUSTOM_MODE_MASK);
     local mode;
@@ -307,8 +323,8 @@ function DebouncePrivate.GetBindingIssue(action, category, notCategory)
                 issue = Constants.BINDING_ISSUE_CANNOT_USE_HOVER_WITH_CLIQUE;
             elseif (binding.hover and (binding.reactions == 0 or binding.frameTypes == 0)) then
                 issue = Constants.BINDING_ISSUE_HOVER_NONE_SELECTED;
-            -- elseif (binding.hover == false and (binding.checkedUnit == "hover" and binding.checkedUnitValue)) then
-            --     issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
+                -- elseif (binding.hover == false and (binding.checkedUnit == "hover" and binding.checkedUnitValue)) then
+                --     issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
             end
         end
     end
@@ -696,7 +712,7 @@ function DebouncePrivate.ConvertToMacroText(action)
         if (action.type == Constants.SPELL) then
             slashCommand = SLASH_CAST1;
             local spellID = FindBaseSpellByID(action.value) or action.value;
-            spellOrItemName, _, icon = GetSpellInfo(spellID);
+            spellOrItemName, _, icon = GetSpellNameAndIconID(spellID);
             if (spellOrItemName) then
                 local subSpellName = GetSpellSubtext(spellID);
                 if (subSpellName and subSpellName ~= "") then
@@ -728,7 +744,7 @@ function DebouncePrivate.ConvertToMacroText(action)
         local spellID;
         name, spellID, icon = GetMountInfoByID(action.value);
         if (spellID) then
-            local spellName = GetSpellInfo(spellID);
+            local spellName = GetSpellNameAndIconID(spellID);
             if (spellName) then
                 macrotext = SLASH_CAST1 .. " " .. name;
             end
@@ -738,7 +754,7 @@ function DebouncePrivate.ConvertToMacroText(action)
             local value = action.value;
             if (value == 0 or value == 268435455) then
                 value = 0;
-                name, _, icon = GetSpellInfo(150544);
+                name, _, icon = GetSpellNameAndIconID(150544);
             end
             macrotext = DebouncePrivate.GetMountMacroText(value);
         end

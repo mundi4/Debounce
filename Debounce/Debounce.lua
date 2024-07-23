@@ -16,12 +16,13 @@ local format, tostring                   = format, tostring;
 local wipe, ipairs, pairs, tinsert, sort = wipe, ipairs, pairs, tinsert, sort;
 local band, bor, bnot                    = bit.band, bit.bor, bit.bnot;
 local InCombatLockdown                   = InCombatLockdown;
-local GetSpellInfo                       = GetSpellInfo;
-local GetSpellSubtext                    = C_Spell.GetSpellSubtext;
-local GetMountInfoByID                   = C_MountJournal.GetMountInfoByID;
-local IsConditionalAction                = DebouncePrivate.IsConditionalAction;
+local GetSpellNameAndIconID              = DebouncePrivate.GetSpellNameAndIconID;
 
-local BindingDriver                      = CreateFrame("Frame", DEBUG and "DebounceBindingDriver" or nil, nil, "SecureHandlerBaseTemplate,SecureHandlerAttributeTemplate");
+local GetSpellSubtext     = C_Spell.GetSpellSubtext;
+local GetMountInfoByID    = C_MountJournal.GetMountInfoByID;
+local IsConditionalAction = DebouncePrivate.IsConditionalAction;
+
+local BindingDriver       = CreateFrame("Frame", DEBUG and "DebounceBindingDriver" or nil, nil, "SecureHandlerBaseTemplate,SecureHandlerAttributeTemplate");
 BindingDriver:SetAttribute("unit", "target");
 RegisterUnitWatch(BindingDriver, true);
 SecureHandlerExecute(BindingDriver, [[

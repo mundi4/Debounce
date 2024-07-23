@@ -21,7 +21,7 @@ local wipe, ipairs, pairs, tinsert, sort = wipe, ipairs, pairs, tinsert, sort;
 local band, bor, bnot                    = bit.band, bit.bor, bit.bnot;
 local InCombatLockdown                   = InCombatLockdown;
 local FindBaseSpellByID                  = FindBaseSpellByID;
-local GetSpellInfo                       = GetSpellInfo;
+local GetSpellNameAndIconID              = DebouncePrivate.GetSpellNameAndIconID;
 local GetSpellSubtext                    = C_Spell.GetSpellSubtext;
 local IsPressHoldReleaseSpell            = C_Spell.IsPressHoldReleaseSpell;
 local GetMountInfoByID                   = C_MountJournal.GetMountInfoByID;
@@ -362,7 +362,7 @@ function SetBindingAttributes(type, value, unit, buttonname)
 
             clickframe:SetAttribute("*type-" .. buttonname, "spell");
             local spellID = FindBaseSpellByID(value) or value;
-            local spellName = GetSpellInfo(spellID);
+            local spellName = GetSpellNameAndIconID(spellID);
             if (spellName) then
                 local subSpellName = GetSpellSubtext(spellID);
                 if (subSpellName and subSpellName ~= "") then
@@ -394,7 +394,7 @@ function SetBindingAttributes(type, value, unit, buttonname)
         elseif (type == Constants.MOUNT) then
             local _, spellID = GetMountInfoByID(value);
             if (spellID) then
-                local spellName = GetSpellInfo(spellID);
+                local spellName = GetSpellNameAndIconID(spellID);
                 clickframe:SetAttribute("*type-" .. buttonname, "spell");
                 clickframe:SetAttribute("*spell-" .. buttonname, spellName);
             else

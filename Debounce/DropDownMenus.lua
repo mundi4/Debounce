@@ -5,6 +5,7 @@ local LLL                                     = DebouncePrivate.L;
 local DebounceUI                              = DebouncePrivate.DebounceUI;
 
 local dump                                    = DebouncePrivate.dump
+local GetSpellNameAndIconID                   = DebouncePrivate.GetSpellNameAndIconID;
 
 local UIDropDownMenu_GetCurrentDropDown       = GenerateClosure(LibDD.UIDropDownMenu_GetCurrentDropDown, LibDD);
 local UIDropDownMenu_Initialize               = GenerateClosure(LibDD.UIDropDownMenu_Initialize, LibDD);
@@ -1583,7 +1584,7 @@ do
                     shapeshiftName = LLL["NO_SHAPESHIFT"];
                 else
                     local _, _, _, spellID = GetShapeshiftFormInfo(formId);
-                    shapeshiftName = spellID and GetSpellInfo(spellID) or nil;
+                    shapeshiftName = spellID and GetSpellNameAndIconID(spellID) or nil;
                 end
                 local label = format("[form:%d]", formId);
                 if (shapeshiftName) then
@@ -1609,11 +1610,11 @@ do
                             };
 
                             if (Constants.PLAYER_CLASS == "DRUID") then
-                                bonusbarNames[1] = GetSpellInfo(768);
-                                bonusbarNames[3] = GetSpellInfo(5487);
-                                bonusbarNames[4] = GetSpellInfo(24858);
+                                bonusbarNames[1] = GetSpellNameAndIconID(768);
+                                bonusbarNames[3] = GetSpellNameAndIconID(5487);
+                                bonusbarNames[4] = GetSpellNameAndIconID(24858);
                             elseif (Constants.PLAYER_CLASS == "ROGUE") then
-                                bonusbarNames[1] = GetSpellInfo(1784);
+                                bonusbarNames[1] = GetSpellNameAndIconID(1784);
                             end
 
                             local options = range(0, Constants.MAX_BONUS_ACTIONBAR_OFFSET, function(offset)

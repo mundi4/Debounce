@@ -26,20 +26,21 @@ local ToggleDropDownMenu                = GenerateClosure(LibDD.ToggleDropDownMe
 local HideDropDownMenu                  = GenerateClosure(LibDD.HideDropDownMenu, LibDD);
 
 
-local luatype               = type;
-local dump                  = DebouncePrivate.dump;
-local GetBindingIssue       = DebouncePrivate.GetBindingIssue;
-local IsKeyInvalidForAction = DebouncePrivate.IsKeyInvalidForAction
+local luatype                = type;
+local dump                   = DebouncePrivate.dump;
+local GetBindingIssue        = DebouncePrivate.GetBindingIssue;
+local IsKeyInvalidForAction  = DebouncePrivate.IsKeyInvalidForAction
+local GetSpellNameAndIconID  = DebouncePrivate.GetSpellNameAndIconID;
+local GetSpellTabNameAndIcon = DebouncePrivate.GetSpellTabNameAndIcon;
 
-
-local _selectedTab          = 1;
-local _selectedSideTab      = 1;
+local _selectedTab           = 1;
+local _selectedSideTab       = 1;
 local _placeholder;
 local _draggingElement;
 local _pickedupInfo;
-local _newlyInsertedActions = {};
+local _newlyInsertedActions  = {};
 
-local BINDING_TYPE_NAMES    = {
+local BINDING_TYPE_NAMES     = {
 	[Constants.SPELL] = LLL["TYPE_SPELL"],
 	[Constants.ITEM] = LLL["TYPE_ITEM"],
 	[Constants.MACRO] = LLL["TYPE_MACRO"],
@@ -55,13 +56,13 @@ local BINDING_TYPE_NAMES    = {
 	[Constants.UNUSED] = LLL["TYPE_UNUSED"],
 };
 
-local UNIT_FRAME_REACTIONS  = {
+local UNIT_FRAME_REACTIONS   = {
 	"HELP",
 	"HARM",
 	"OTHER",
 };
 
-local UNIT_FRAME_TYPES      = {
+local UNIT_FRAME_TYPES       = {
 	"PLAYER",
 	"PET",
 	"GROUP",
@@ -71,7 +72,7 @@ local UNIT_FRAME_TYPES      = {
 	"UNKNOWN",
 };
 
-local UNIT_INFO             = {
+local UNIT_INFO              = {
 	player = {
 		name = LLL["UNIT_PLAYER"],
 		unitexists = false,
@@ -133,7 +134,7 @@ local UNIT_INFO             = {
 	},
 };
 
-local Create_UIDropDownMenu = function(name, parent)
+local Create_UIDropDownMenu  = function(name, parent)
 	return LibDD:Create_UIDropDownMenu(name, parent);
 end
 
@@ -147,11 +148,11 @@ do
 				[5] = GetFlyoutInfo(229),
 			};
 			if (Constants.PLAYER_CLASS == "DRUID") then
-				_bonusbarLabels[1] = GetSpellInfo(768);
-				_bonusbarLabels[3] = GetSpellInfo(5487);
-				_bonusbarLabels[4] = GetSpellInfo(24858);
+				_bonusbarLabels[1] = GetSpellNameAndIconID(768);
+				_bonusbarLabels[3] = GetSpellNameAndIconID(5487);
+				_bonusbarLabels[4] = GetSpellNameAndIconID(24858);
 			elseif (Constants.PLAYER_CLASS == "ROGUE") then
-				_bonusbarLabels[1] = GetSpellInfo(1784);
+				_bonusbarLabels[1] = GetSpellNameAndIconID(1784);
 			end
 			for i = 0, Constants.MAX_BONUS_ACTIONBAR_OFFSET do
 				local text = _bonusbarLabels[i];
@@ -289,7 +290,7 @@ local function NameAndIconFromElementData(elementData)
 	if (type == Constants.SPELL) then
 		local baseSpellID = FindBaseSpellByID(value) or value;
 		local overrideID = FindSpellOverrideByID(baseSpellID);
-		actionName, _, actionIcon = GetSpellInfo(overrideID);
+		actionName, actionIcon = GetSpellNameAndIconID(overrideID);
 	elseif (type == Constants.MACRO) then
 		local macroName;
 		macroName, actionIcon = GetMacroInfo(value);
@@ -309,7 +310,7 @@ local function NameAndIconFromElementData(elementData)
 	elseif (type == Constants.MOUNT) then
 		local name, icon;
 		if (value == 0 or value == 268435455) then
-			name, _, icon = GetSpellInfo(150544);
+			name, _, icon = GetSpellNameAndIconID(150544);
 		elseif (value) then
 			name, _, icon = C_MountJournal.GetMountInfoByID(value);
 		end
@@ -757,7 +758,7 @@ do
 							tinsert(_lines, format("[form:%d] (%s)", i, LLL["NO_SHAPESHIFT"]));
 						else
 							local _, _, _, spellID = GetShapeshiftFormInfo(i);
-							local spellName = spellID and GetSpellInfo(spellID);
+							local spellName = spellID and GetSpellNameAndIconID(spellID);
 							if (spellName) then
 								tinsert(_lines, format("[form:%d] (%s)", i, spellName));
 							else
@@ -1183,10 +1184,10 @@ function DebounceFrameMixin:InitializeSideTabs()
 	for i, tab in ipairs(self.SideTabs) do
 		local name, icon;
 		if (i == 1) then
-			name, icon = GetSpellTabInfo(1);
+			name, icon = GetSpellTabNameAndIcon(1);
 			tab.spec = nil;
 		elseif (i == 2) then
-			name, icon = GetSpellTabInfo(2);
+			name, icon = GetSpellTabNameAndIcon(2);
 			tab.spec = 0;
 		else
 			local spec = i - 2;
@@ -1493,7 +1494,7 @@ function DebounceFrameMixin:OnHide()
 
 	HideSaveOrDiscardPopup();
 	HideDeleteConfirmationPopup();
-	
+
 	if (self.iconDataProvider) ~= nil then
 		self.iconDataProvider:Release();
 		self.iconDataProvider = nil;
@@ -1607,7 +1608,7 @@ end
 
 function DebounceFrameMixin:Refresh(retainScrollPosition)
 	HideDeleteConfirmationPopup();
-	
+
 	if (_placeholder) then
 		_placeholder.sortIndex = nil;
 		_placeholder = nil;
