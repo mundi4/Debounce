@@ -17,7 +17,7 @@ local wipe, ipairs, pairs, tinsert, sort = wipe, ipairs, pairs, tinsert, sort;
 local band, bor, bnot                    = bit.band, bit.bor, bit.bnot;
 local InCombatLockdown                   = InCombatLockdown;
 local GetSpellInfo                       = GetSpellInfo;
-local GetSpellSubtext                    = GetSpellSubtext;
+local GetSpellSubtext                    = C_Spell.GetSpellSubtext;
 local GetMountInfoByID                   = C_MountJournal.GetMountInfoByID;
 local IsConditionalAction                = DebouncePrivate.IsConditionalAction;
 

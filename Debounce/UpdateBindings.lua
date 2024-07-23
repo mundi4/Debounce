@@ -22,8 +22,8 @@ local band, bor, bnot                    = bit.band, bit.bor, bit.bnot;
 local InCombatLockdown                   = InCombatLockdown;
 local FindBaseSpellByID                  = FindBaseSpellByID;
 local GetSpellInfo                       = GetSpellInfo;
-local GetSpellSubtext                    = GetSpellSubtext;
-local IsPressHoldReleaseSpell            = IsPressHoldReleaseSpell;
+local GetSpellSubtext                    = C_Spell.GetSpellSubtext;
+local IsPressHoldReleaseSpell            = C_Spell.IsPressHoldReleaseSpell;
 local GetMountInfoByID                   = C_MountJournal.GetMountInfoByID;
 
 local BindingAttrsCache                  = {};

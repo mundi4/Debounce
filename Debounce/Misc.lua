@@ -12,6 +12,8 @@ local tinsert, tremove, wipe  = tinsert, tremove, wipe;
 local pairs, ipairs           = pairs, ipairs;
 local GetMountInfoByID        = C_MountJournal.GetMountInfoByID;
 
+local GetSpellSubtext         = C_Spell.GetSpellSubtext;
+
 function DebouncePrivate.GetSetCustomStateModeAndIndex(value)
     local modeFlag = band(value, Constants.SETCUSTOM_MODE_MASK);
     local mode;

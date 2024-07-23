@@ -1503,13 +1503,18 @@ end
 function DebounceFrameMixin:OnEvent(event, arg1)
 	if (event == "GLOBAL_MOUSE_UP") then
 		if (arg1 == "LeftButton" and IsDraggingElement()) then
-			local mouseFocus = GetMouseFocus();
-			if (_placeholder and DoesAncestryInclude(self.ScrollBox, mouseFocus)) then
-				self:OnReceiveDrag();
-			else
-				self:ClearPlaceHolder();
-				self:ClearMouse();
+			if (_placeholder) then
+				local mouseFoci = GetMouseFoci();
+				for _, mouseFocus in ipairs(mouseFoci) do
+					if (DoesAncestryInclude(self.ScrollBox, mouseFocus)) then -- and (mouseFocus:GetObjectType() ~= "Button")
+						self:OnReceiveDrag();
+						return;
+					end
+				end
 			end
+
+			self:ClearPlaceHolder();
+			self:ClearMouse();
 		end
 	elseif (event == "GLOBAL_MOUSE_DOWN") then
 		if (arg1 == "RightButton") then
@@ -1916,13 +1921,16 @@ function DebounceKeybindFrameMixin:OnKeyDown(key)
 		return;
 	end
 
-	local mouseFocus = GetMouseFocus();
-	if (DoesAncestryInclude(self, mouseFocus)) then
-		self:SetPropagateKeyboardInput(false);
-		self:ProcessInput(key);
-	else
-		self:SetPropagateKeyboardInput(true);
+	local mouseFoci = GetMouseFoci();
+	for _, mouseFocus in ipairs(mouseFoci) do
+		if (DoesAncestryInclude(self, mouseFocus)) then
+			self:SetPropagateKeyboardInput(false);
+			self:ProcessInput(key);
+			return
+		end
 	end
+
+	self:SetPropagateKeyboardInput(true);
 
 	-- if (self:IsMouseOver()) then
 	-- 	self:SetPropagateKeyboardInput(false);
@@ -2088,7 +2096,7 @@ function DebounceIconSelectorFrameMixin:OnShow()
 
 	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);
 	self.iconDataProvider = DebounceFrame:RefreshIconDataProvider();
-	self.BorderBox.IconTypeDropDown:SetSelectedValue(IconSelectorPopupFrameIconFilterTypes.All);
+	self:SetIconFilter(IconSelectorPopupFrameIconFilterTypes.All);
 	self:Update();
 	self.BorderBox.IconSelectorEditBox:OnTextChanged();
 
