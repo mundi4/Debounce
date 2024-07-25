@@ -713,7 +713,6 @@ function DebouncePrivate.ConvertToMacroText(action)
             slashCommand = SLASH_CAST1;
             local spellID = FindBaseSpellByID(action.value) or action.value;
             spellOrItemName, icon = GetSpellNameAndIconID(spellID);
-            print(spellOrItemName, _, icon)
             if (spellOrItemName) then
                 local subSpellName = GetSpellSubtext(spellID);
                 if (subSpellName and subSpellName ~= "") then
