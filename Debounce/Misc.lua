@@ -712,7 +712,8 @@ function DebouncePrivate.ConvertToMacroText(action)
         if (action.type == Constants.SPELL) then
             slashCommand = SLASH_CAST1;
             local spellID = FindBaseSpellByID(action.value) or action.value;
-            spellOrItemName, _, icon = GetSpellNameAndIconID(spellID);
+            spellOrItemName, icon = GetSpellNameAndIconID(spellID);
+            print(spellOrItemName, _, icon)
             if (spellOrItemName) then
                 local subSpellName = GetSpellSubtext(spellID);
                 if (subSpellName and subSpellName ~= "") then
@@ -754,7 +755,7 @@ function DebouncePrivate.ConvertToMacroText(action)
             local value = action.value;
             if (value == 0 or value == 268435455) then
                 value = 0;
-                name, _, icon = GetSpellNameAndIconID(150544);
+                name, icon = GetSpellNameAndIconID(150544);
             end
             macrotext = DebouncePrivate.GetMountMacroText(value);
         end

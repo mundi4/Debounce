@@ -310,7 +310,7 @@ local function NameAndIconFromElementData(elementData)
 	elseif (type == Constants.MOUNT) then
 		local name, icon;
 		if (value == 0 or value == 268435455) then
-			name, _, icon = GetSpellNameAndIconID(150544);
+			name, icon = GetSpellNameAndIconID(150544);
 		elseif (value) then
 			name, _, icon = C_MountJournal.GetMountInfoByID(value);
 		end
