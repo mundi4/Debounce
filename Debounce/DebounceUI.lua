@@ -4,26 +4,20 @@
 -- 2. 기능/메뉴 별로 함수들을 쪼개기
 --   예: SomeMenu_Initialize(level, menuList)...
 
-local _, DebouncePrivate                = ...;
-DebouncePrivate.DebounceUI              = {};
+local _, DebouncePrivate    = ...;
+DebouncePrivate.DebounceUI  = {};
 
-local NUM_SPECS                         = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
-local LibDD                             = LibStub:GetLibrary("LibUIDropDownMenu-4.0");
-local Constants                         = DebouncePrivate.Constants;
-local LLL                               = DebouncePrivate.L;
-local DebounceUI                        = DebouncePrivate.DebounceUI;
+local NUM_SPECS             = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
+local Constants             = DebouncePrivate.Constants;
+local LLL                   = DebouncePrivate.L;
+local DebounceUI            = DebouncePrivate.DebounceUI;
 
-local MACRO_NAME_CHAR_LIMIT             = 32;
-local MACRO_CHAR_LIMIT                  = 1000;
-local DISABLED_FONT_COLOR               = _G.DISABLED_FONT_COLOR;
-local ERROR_COLOR                       = _G.ERROR_COLOR;
-local WARNING_FONT_COLOR                = CreateColor(1, 0.5, 0, 1);
-local INACTIVE_COLOR                    = _G.INACTIVE_COLOR;
-
-local UIDropDownMenu_GetCurrentDropDown = GenerateClosure(LibDD.UIDropDownMenu_GetCurrentDropDown, LibDD);
-local UIDropDownMenu_Initialize         = GenerateClosure(LibDD.UIDropDownMenu_Initialize, LibDD);
-local ToggleDropDownMenu                = GenerateClosure(LibDD.ToggleDropDownMenu, LibDD);
-local HideDropDownMenu                  = GenerateClosure(LibDD.HideDropDownMenu, LibDD);
+local MACRO_NAME_CHAR_LIMIT = 32;
+local MACRO_CHAR_LIMIT      = 1000;
+local DISABLED_FONT_COLOR   = _G.DISABLED_FONT_COLOR;
+local ERROR_COLOR           = _G.ERROR_COLOR;
+local WARNING_FONT_COLOR    = CreateColor(1, 0.5, 0, 1);
+local INACTIVE_COLOR        = _G.INACTIVE_COLOR;
 
 
 local luatype                = type;
@@ -39,6 +33,8 @@ local _placeholder;
 local _draggingElement;
 local _pickedupInfo;
 local _newlyInsertedActions  = {};
+
+DebounceUI.ActionMenuRootTag = "DEBOUNCE_ACTION_ROOT";
 
 local BINDING_TYPE_NAMES     = {
 	[Constants.SPELL] = LLL["TYPE_SPELL"],
@@ -97,24 +93,30 @@ local UNIT_INFO              = {
 	tank = {
 		name = LLL["UNIT_TANK"],
 		tooltipTitle = LLL["UNIT_ROLE_DESC"],
+		type = "role",
 	},
 	healer = {
 		name = LLL["UNIT_HEALER"],
 		tooltipTitle = LLL["UNIT_ROLE_DESC"],
+		type = "role",
 	},
 	maintank = {
 		name = LLL["UNIT_MAINTANK"],
 		tooltipTitle = LLL["UNIT_ROLE_DESC"],
+		type = "role",
 	},
 	mainassist = {
 		name = LLL["UNIT_MAINASSIST"],
 		tooltipTitle = LLL["UNIT_ROLE_DESC"],
+		type = "role",
 	},
 	custom1 = {
 		name = LLL["UNIT_CUSTOM1"],
+		type = "custom",
 	},
 	custom2 = {
 		name = LLL["UNIT_CUSTOM2"],
+		type = "custom",
 	},
 	hover = {
 		name = LLL["UNIT_HOVER"],
@@ -133,10 +135,6 @@ local UNIT_INFO              = {
 		unitexists = false,
 	},
 };
-
-local Create_UIDropDownMenu  = function(name, parent)
-	return LibDD:Create_UIDropDownMenu(name, parent);
-end
 
 local GetActionBarTypeLabel;
 do
@@ -193,18 +191,6 @@ local function GetSideTabaLabel(sideTabID)
 	end
 end
 
-local function HideAnyDropDownMenu()
-	local dropDownList = _G["L_DropDownList1"];
-	if (dropDownList and dropDownList:IsShown()) then
-		local dropdown = UIDropDownMenu_GetCurrentDropDown();
-		if (dropdown == DebounceFrame.EditDropDown or dropdown == DebounceFrame.AddDropDown or dropdown == DebounceFrame.OptionsDropDown) then
-			HideDropDownMenu(1);
-			return true;
-		end
-	end
-	return false;
-end
-
 local function DoesAncestryIncludeMouseFocus(ancestry)
 	if (GetMouseFocus) then
 		return DoesAncestryInclude(ancestry, GetMouseFocus())
@@ -230,9 +216,8 @@ local function IsEditingMacro(elementData)
 end
 
 local function IsEditDropdownShown(elementData)
-	local dropDownList = _G["L_DropDownList1"];
-	if (dropDownList and dropDownList:IsShown() and dropDownList.dropdown == DebounceFrame.EditDropDown) then
-		if (elementData == nil or DebounceFrame.EditDropDown.elementData == elementData) then
+	if (DebounceFrame.contextMenu) then
+		if (elementData == nil or DebounceFrame.contextMenuData == elementData) then
 			return true;
 		end
 	end
@@ -988,7 +973,7 @@ function DebounceLineMixin:OnClick(buttonName)
 				return;
 			end
 			if (IsEditDropdownShown(elementData)) then
-				HideAnyDropDownMenu();
+				securecall("CloseMenus");
 			end
 			if (IsAltKeyDown() or IsShiftKeyDown()) then
 				DeleteElementData(elementData);
@@ -1145,14 +1130,11 @@ function DebouncePortraitMixin:OnLoad()
 		self.TooltipText = rawget(LLL, self.TooltipText);
 	end
 
-	if (self.DropDown) then
-		self:SetScript("OnMouseDown", function()
-			DebounceUI.ToggleDropDownMenu(self:GetParent()[self.DropDown], self);
-		end);
-		self.HandlesGlobalMouseEvent = function(_, buttonID, event)
-			return event == "GLOBAL_MOUSE_DOWN" and buttonID == "LeftButton";
-		end
-	end
+	-- if (self.DropDown) then
+	-- 	self.HandlesGlobalMouseEvent = function(_, buttonID, event)
+	-- 		return event == "GLOBAL_MOUSE_DOWN" and buttonID == "LeftButton";
+	-- 	end
+	-- end
 end
 
 function DebouncePortraitMixin:OnEnter()
@@ -1420,29 +1402,30 @@ function DebounceFrameMixin:OnLoad()
 
 	self.AddButton:SetText(LLL["ADD"]);
 
-	self.AddDropDown = Create_UIDropDownMenu("DebounceAddDropDown", self);
+	-- self.AddDropDown = Create_UIDropDownMenu("DebounceAddDropDown", self);
+	-- self.OptionsDropDown = Create_UIDropDownMenu("DebounceOptionsDropDown", self);
+	-- self.EditDropDown = Create_UIDropDownMenu("DebounceEditDropDown", self);
+	-- self.CustomStatesDropDown = Create_UIDropDownMenu("DebounceCustomStatesDropDown", self);
+	-- self.OptionsDropDown = Create_UIDropDownMenu("DebounceOptionsDropDown", self);
 
-	self.EditDropDown = Create_UIDropDownMenu("DebounceEditDropDown", self);
+	-- self.OptionsDropDown.listFrameOnShow = function()
+	-- 	if (L_UIDROPDOWNMENU_MENU_LEVEL == 1) then
+	-- 		self.OptionsPortrait:SetSelectedState(true);
+	-- 		-- self.OptionsPortrait.Portrait:SetVertexColor(1, 1, 0);
+	-- 	end
+	-- end
+	-- self.OptionsDropDown.onHide = function(id)
+	-- 	if (id == 2) then
+	-- 		self.OptionsPortrait:SetSelectedState(false);
+	-- 		-- self.OptionsPortrait.Portrait:SetVertexColor(1, 1, 1);
+	-- 	end
+	-- end
 
-	self.CustomStatesDropDown = Create_UIDropDownMenu("DebounceCustomStatesDropDown", self);
-
-	self.OptionsDropDown = Create_UIDropDownMenu("DebounceOptionsDropDown", self);
-	self.OptionsDropDown.listFrameOnShow = function()
-		if (L_UIDROPDOWNMENU_MENU_LEVEL == 1) then
-			self.OptionsPortrait:SetSelectedState(true);
-			-- self.OptionsPortrait.Portrait:SetVertexColor(1, 1, 0);
-		end
-	end
-	self.OptionsDropDown.onHide = function(id)
-		if (id == 2) then
-			self.OptionsPortrait:SetSelectedState(false);
-			-- self.OptionsPortrait.Portrait:SetVertexColor(1, 1, 1);
-		end
-	end
-
-	UIDropDownMenu_Initialize(self.AddDropDown, DebounceUI.AddDropDown_Initialize, "MENU");
-	UIDropDownMenu_Initialize(self.OptionsDropDown, DebounceUI.OptionsDropDown_Initialize, "MENU");
-	UIDropDownMenu_Initialize(self.CustomStatesDropDown, DebounceUI.CustomStatesDropDown_Initialize, "MENU");
+	self:InitDropdownMenus();
+	self:InitCustomStatesDropdown();
+	--UIDropDownMenu_Initialize(self.AddDropDown, DebounceUI.AddDropDown_Initialize, "MENU");
+	--UIDropDownMenu_Initialize(self.OptionsDropDown, DebounceUI.OptionsDropDown_Initialize, "MENU");
+	--UIDropDownMenu_Initialize(self.CustomStatesDropDown, DebounceUI.CustomStatesDropDown_Initialize, "MENU");
 
 	self:InitializeScrollBox();
 	self:InitializeSideTabs();
@@ -1467,6 +1450,36 @@ function DebounceFrameMixin:OnLoad()
 	else
 		self:SetPoint("CENTER", "UIParent", 0, 0);
 	end
+end
+
+function DebounceFrameMixin:InitDropdownMenus()
+	-- self.AddButton:SetUpdateCallback(function()
+	-- 	-- self:FullRefreshIfVisible();
+	-- end);
+
+	-- self.AddButton:SetIsDefaultCallback(function()
+	-- 	-- return C_HeirloomInfo.IsUsingDefaultFilters();
+	-- end);
+
+	-- self.AddButton:SetDefaultCallback(function()
+	-- 	-- C_HeirloomInfo.SetDefaultFilters();
+	-- end);
+
+	self.AddButton:SetupMenu(DebounceUI.SetupAddDropdownMenu);
+	self.OptionsPortrait:SetupMenu(DebounceUI.SetupOptionsDropdownMenu);
+end
+
+function DebounceFrameMixin:InitCustomStatesDropdown()
+	self.CustomStatesPortrait:SetupMenu(DebounceUI.SetupCustomStatesDropdownMenu);
+	-- self.CustomStatesPortrait:RegisterCallback("OnUpdate", function()
+	-- 	print("OnUpdate")
+	-- end);
+	-- self.CustomStatesPortrait:RegisterCallback("OnMenuOpen", function()
+	-- 	print("OnMenuOpen")
+	-- end);
+	-- self.CustomStatesPortrait:RegisterCallback("OnMenuClose", function()
+	-- 	print("OnMenuClose")
+	-- end);
 end
 
 function DebounceFrameMixin:OnShow()
@@ -1557,7 +1570,7 @@ function DebounceFrameMixin:OnKeyDown(input)
 	if (input == "ESCAPE") then
 		self:SetPropagateKeyboardInput(false);
 
-		if (HideAnyDropDownMenu()) then
+		if (Menu.GetManager():HandleESC()) then
 			return;
 		end
 
@@ -1714,54 +1727,18 @@ function DebounceFrameMixin:SetTab(id)
 	self:Refresh();
 end
 
-local function setEnableDropdownButton(button, enabled)
-	if (enabled) then
-		button:SetEnabled(true);
-		button.Check:SetDesaturated(false);
-		button.Check:SetAlpha(1);
-		button.UnCheck:SetDesaturated(false);
-		button.UnCheck:SetAlpha(1);
-	else
-		button:SetEnabled(false);
-		button.Check:SetDesaturated(true);
-		button.Check:SetAlpha(0.5);
-		button.UnCheck:SetDesaturated(true);
-		button.UnCheck:SetAlpha(0.5);
-	end
-end
-
 function DebounceFrameMixin:ShowEditDropdown(button, atButton)
-	GameTooltip:SetMinimumWidth(0, false);
-
-	DebounceKeybindFrame:Hide();
-	HideDeleteConfirmationPopup();
-	HideDropDownMenu(1);
-
-	local dropdown = self.EditDropDown;
-	dropdown.button = button;
-	dropdown.elementData = button:GetElementData();
-	dropdown.action = dropdown.elementData.action;
-	dropdown.initialize = DebounceUI.EditDropDown_Initialize;
-	dropdown.displayMode = "MENU";
-
-	dropdown.listFrameOnShow = function()
-		button:Update();
-	end;
-
-	dropdown.onHide = function()
-		DebounceFrame:Update();
-	end;
-
-	if (atButton) then
-		dropdown.point = "TOPLEFT";
-		dropdown.relativePoint = "BOTTOMLEFT";
-		dropdown.relativeTo = button;
-		dropdown.xOffset = 72;
-		dropdown.yOffset = 6;
-		ToggleDropDownMenu(1, nil, dropdown);
-	else
-		ToggleDropDownMenu(1, nil, dropdown, "cursor", 20, 15);
+	local elementData = button:GetElementData();
+	local menu = MenuUtil.CreateContextMenu(button, DebounceUI.SetupEditDropdownMenu, elementData);
+	self.contextMenu = menu;
+	if (menu) then
+		self.contextMenuData = elementData;
+		menu:SetClosedCallback(function()
+			self.contextMenu = nil;
+			self.contextMenuData = nil;
+		end);
 	end
+	self:Update();
 end
 
 function DebounceFrameMixin:OnPickup()
@@ -2603,7 +2580,7 @@ DebounceUI.NameAndIconFromElementData = NameAndIconFromElementData;
 DebounceUI.ShowInputBox = ShowInputBox
 
 function DebounceUI.ToggleDropDownMenu(dropdown, button)
-	HideDeleteConfirmationPopup();
-	local w, h = button:GetSize();
-	ToggleDropDownMenu(1, "root", dropdown, button, w + 5, h + 5);
+	-- HideDeleteConfirmationPopup();
+	-- local w, h = button:GetSize();
+	-- ToggleDropDownMenu(1, "root", dropdown, button, w + 5, h + 5);
 end

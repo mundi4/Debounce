@@ -237,7 +237,7 @@
 			<Anchor point="CENTER"/>
 		</Anchors>
 		<Frames>
-			<Button parentKey="OptionsPortrait" inherits="DebouncePortraitTemplate">
+			<DropdownButton parentKey="OptionsPortrait" inherits="DebouncePortraitTemplate">
 				<KeyValues>
 					<KeyValue key="FrameName" value="MacroFrame" type="string"/>
 					<!-- <KeyValue key="PortraitTexture" value="Interface\WorldMap\GEAR_64GREY" type="string"/> -->
@@ -250,8 +250,8 @@
 				<Anchors>
 					<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-40" y="-40"/>
 				</Anchors>
-			</Button>
-			<Button parentKey="CustomStatesPortrait" inherits="DebouncePortraitTemplate">
+			</DropdownButton>
+			<DropdownButton parentKey="CustomStatesPortrait" inherits="DebouncePortraitTemplate">
 				<KeyValues>
 					<KeyValue key="FrameName" value="SpellBookFrame" type="string"/>
 					<KeyValue key="PortraitTexture" value="254885" type="number"/>
@@ -262,7 +262,7 @@
 				<Anchors>
 					<Anchor point="RIGHT" relativeKey="$parent.OptionsPortrait" relativePoint="LEFT" x="-5" y="0"/>
 				</Anchors>
-			</Button>			
+			</DropdownButton>
 			<Button parentKey="OverviewPortrait" inherits="DebouncePortraitTemplate">
 				<KeyValues>
 					<KeyValue key="FrameName" value="SpellBookFrame" type="string"/>
@@ -337,12 +337,21 @@
 					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="BOTTOMRIGHT" x="5" y="5"/>
 				</Anchors>
 			</EventFrame>
-			<Button parentKey="AddButton" inherits="UIPanelButtonTemplate" text="ADD">
+
+			<DropdownButton parentKey="AddButton" inherits="WowStyle1FilterDropdownTemplate">
 				<Size x="90" y="23"/>
 				<Anchors>
 					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPLEFT" x="2" y="0"/>
 				</Anchors>
-			</Button>
+			</DropdownButton>
+
+			<!-- <Button parentKey="AddButton" inherits="UIPanelButtonTemplate" text="ADD">
+				<Size x="90" y="23"/>
+				<Anchors>
+					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPLEFT" x="2" y="0"/>
+				</Anchors>
+			</Button> -->
+
 			<Button parentKey="Tab1" inherits="DebounceFrameTabTemplate" text="GENERAL" id="1">
 				<Anchors>
 					<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="12" y="1"/>

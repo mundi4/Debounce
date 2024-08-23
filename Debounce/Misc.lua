@@ -58,7 +58,8 @@ do
             update = true;
         end
 
-        if (update or action._dirty) then
+        if (true) then
+        -- if (update or action._dirty) then
             action._dirty = nil;
 
             binding.type, binding.value = action.type, action.value;
