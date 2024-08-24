@@ -1397,18 +1397,6 @@ function DebouncePrivate.ApplyOptions(option)
         if (type(value) == "number") then
             value = max(0, min(value, STATE_DRIVER_UPDATE_THROTTLE_DEFAULT));
             SecureStateDriverManager:SetAttribute("updatetime", value);
-            print("stateDriverUpdateThrottle", value)
         end
     end
 end
-
-SecureStateDriverManager:HookScript("OnAttributeChanged", function(_, name, value)
-    print("onattr changed:", name, value)
-end)
-
--- local frame = CreateFrame("Frame");
--- frame:SetScript("OnEvent", function(self, event, ...)
-    
---     print(GetTime(),event,...)
--- end);
--- frame:RegisterEvent("UPDATE_MOUSEOVER_UNIT");

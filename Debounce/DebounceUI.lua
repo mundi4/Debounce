@@ -804,7 +804,7 @@ do
 			local state = "$state" .. stateIndex;
 			if (action[state] ~= nil) then
 				addLabelLine(format(LLL["CUSTOM_STATE_NUM"], stateIndex));
-				addValueLine(action[state] == true and LLL["CONDITION_CUSTOMSTATE_YES"] or LLL["CONDITION_CUSTOMSTATE_NO"]);
+				addValueLine(action[state] == true and LLL["CONDITION_CUSTOM_STATE_YES"] or LLL["CONDITION_CUSTOM_STATE_NO"]);
 			end
 		end
 

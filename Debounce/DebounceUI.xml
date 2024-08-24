@@ -882,7 +882,7 @@
 		</Scripts>
 	</Frame>
 
-	<Frame name="DebounceSliderMenuTemplate" mixin="DebounceStateDriverUpdateThrottleSliderMixin" virtual="true">
+	<Frame name="DebounceStateDriverUpdateThrottleSliderTemplate" mixin="DebounceStateDriverUpdateThrottleSliderMixin" virtual="true">
 		<Size x="200" y="16"/>
 		<Frames>
 			<Frame parentKey="ValueText" name="ValueText" inherits="PropertyFontStringTemplate">

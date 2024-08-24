@@ -293,6 +293,7 @@ function DebounceUI.SetupOptionsDropdownMenu(dropdown, rootDescription)
         local unitframeDescription = rootDescription:CreateButton(LLL["UNITFRAME_OPTIONS"]);
         if (DebouncePrivate.CliqueDetected) then
             SetErrorTooltip(unitframeDescription, LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"]);
+            unitframeDescription:SetEnabled(false);
         end
 
         local useMouseDownDescription = unitframeDescription:CreateCheckbox(LLL["UNITFRAME_TRIGGER_ON_MOUSE_DOWN"], function()
@@ -356,7 +357,7 @@ function DebounceUI.SetupOptionsDropdownMenu(dropdown, rootDescription)
             GameTooltip_AddErrorLine(tooltip, LLL["STATE_DRIVER_UPDATE_THROTTLE_WARNING"]);
         end);
 
-        local sliderDescription = stateDriverUpdateThrottleDescription:CreateTemplate("DebounceSliderMenuTemplate");
+        local sliderDescription = stateDriverUpdateThrottleDescription:CreateTemplate("DebounceStateDriverUpdateThrottleSliderTemplate");
         sliderDescription:AddInitializer(function(frame, description, menu)
             frame:UpdateVisibleState();
         end)
@@ -374,7 +375,7 @@ function DebounceUI.SetupOptionsDropdownMenu(dropdown, rootDescription)
     end
 
     -- do
-    --     local sliderDescription = rootDescription:CreateTemplate("DebounceSliderMenuTemplate");
+    --     local sliderDescription = rootDescription:CreateTemplate("DebounceStateDriverUpdateThrottleSliderTemplate");
     --     sliderDescription:AddInitializer(function(frame, description, menu)
     --         frame:OnAttach();
     --     end)
@@ -431,17 +432,19 @@ do
 
     local function AppendDisable(description, prefix, property)
         local text = rawget(LLL, prefix .. "_DISABLE") or LLL["DISABLE"];
-        description:CreateRadio(LLL["DISABLE"], actionValueEquals, setActionValue, { key = property, value = nil });
+        return description:CreateRadio(text, actionValueEquals, setActionValue, { key = property, value = nil });
     end
 
     local function AppendYesNo(description, prefix, property)
-        description:CreateRadio(rawget(LLL, prefix .. "_YES") or YES, actionValueEquals, setActionValue, { key = property, value = true });
-        description:CreateRadio(rawget(LLL, prefix .. "_NO") or NO, actionValueEquals, setActionValue, { key = property, value = false });
+        local yes = description:CreateRadio(rawget(LLL, prefix .. "_YES") or YES, actionValueEquals, setActionValue, { key = property, value = true });
+        local no = description:CreateRadio(rawget(LLL, prefix .. "_NO") or NO, actionValueEquals, setActionValue, { key = property, value = false });
+        return yes, no;
     end
 
     local function AppendDisableYesNo(description, prefix, property)
-        AppendDisable(description, prefix, property);
-        AppendYesNo(description, prefix, property);
+        local disable = AppendDisable(description, prefix, property);
+        local yes, no = AppendYesNo(description, prefix, property);
+        return disable, yes, no;
     end
 
     local function AppendCheckboxes(parentDescription, key, items, callback)
@@ -486,7 +489,7 @@ do
 
             if (err) then
                 color = ERROR_COLOR;
-                err = rawget(LLL, err) or rawget(LLL, "BINDING_ERROR_" .. err);
+                err = rawget(LLL, err) or rawget(LLL, "BINDING_ERROR_" .. err) or error;
             else
                 local active = isActive;
                 if (active) then
@@ -617,6 +620,9 @@ do
     end
 
     local function hoverConditionIsOn()
+        if (DebouncePrivate.CliqueDetected) then
+            return false;
+        end
         return _action.hover and true or false;
     end
 
@@ -688,8 +694,15 @@ do
     end
 
     local function CreateHoverMenu(parentDescription)
-        local description = CreateActionMenuItemGroup(parentDescription, "CONDITION_HOVER", "hover");
-        AppendDisableYesNo(description, "CONDITION_HOVER", "hover");
+        local description = CreateActionMenuItemGroup(parentDescription, "CONDITION_HOVER", "hover", nil, DebouncePrivate.CliqueDetected and LLL["BINDING_ERROR_CANNOT_USE_HOVER_WITH_CLIQUE"] or nil);
+        -- description:SetEnabled(function()
+        --     return not DebouncePrivate.CliqueDetected;
+        -- end);
+        local disable, yes, no = AppendDisableYesNo(description, "CONDITION_HOVER", "hover");
+        if (DebouncePrivate.CliqueDetected) then
+            yes:SetEnabled(false);
+            no:SetEnabled(false);
+        end
 
         description:CreateDivider();
         description:CreateTitle(LLL["CONDITION_REACTIONS"]);

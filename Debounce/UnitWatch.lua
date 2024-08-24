@@ -578,7 +578,6 @@ for i = 1, 2 do
     SecureHandlerWrapScript(button, "OnClick", UnitWatch, [==[
         local alias = self:GetAttribute("alias")
         local value = button
-        print(alias, value)
         if (not value or value == "LeftButton") then
             value = nil
         end
