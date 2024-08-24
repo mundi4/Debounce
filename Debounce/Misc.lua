@@ -11,8 +11,10 @@ local band, bor, bnot, lshift = bit.band, bit.bor, bit.bnot, bit.lshift;
 local tinsert, tremove, wipe  = tinsert, tremove, wipe;
 local pairs, ipairs           = pairs, ipairs;
 local GetMountInfoByID        = C_MountJournal.GetMountInfoByID;
-
 local GetSpellSubtext         = C_Spell.GetSpellSubtext;
+
+
+local STATE_DRIVER_UPDATE_THROTTLE_DEFAULT = 0.2;
 
 function DebouncePrivate.GetSpellNameAndIconID(spellId)
     local spellInfo = C_Spell.GetSpellInfo(spellId);
@@ -20,6 +22,7 @@ function DebouncePrivate.GetSpellNameAndIconID(spellId)
         return spellInfo.name, spellInfo.iconID;
     end
 end
+
 local GetSpellNameAndIconID = DebouncePrivate.GetSpellNameAndIconID;
 
 function DebouncePrivate.GetSpellTabNameAndIcon(index)
@@ -28,6 +31,7 @@ function DebouncePrivate.GetSpellTabNameAndIcon(index)
         return skillLineInfo.name, skillLineInfo.iconID;
     end
 end
+
 local GetSpellTabNameAndIcon = DebouncePrivate.GetSpellTabNameAndIcon;
 
 function DebouncePrivate.GetSetCustomStateModeAndIndex(value)
@@ -59,7 +63,7 @@ do
         end
 
         if (true) then
-        -- if (update or action._dirty) then
+            -- if (update or action._dirty) then
             action._dirty = nil;
 
             binding.type, binding.value = action.type, action.value;
@@ -1372,7 +1376,7 @@ function DebouncePrivate.DisplayMessage(message, r, g, b)
 end
 
 function DebouncePrivate.ApplyOptions(option)
-    if (option == true or option == "unitframeUseMouseDown") then
+    if (option == nil or option == "unitframeUseMouseDown") then
         if (not DebouncePrivate.CliqueDetected) then
             local trigger = DebouncePrivate.Options.unitframeUseMouseDown and "AnyDown" or "AnyUp";
             for frame in pairs(DebouncePrivate.ccframes) do
@@ -1380,4 +1384,31 @@ function DebouncePrivate.ApplyOptions(option)
             end
         end
     end
+    -- if (option == nil or option == "removeStateDriverUpdateThrottle") then
+    --     if (DebouncePrivate.Options.removeStateDriverUpdateThrottle) then
+    --         print("ApplyOptions", 0)
+    --         SecureStateDriverManager:SetAttribute("updatetime", 0);
+    --     else
+    --         SecureStateDriverManager:SetAttribute("updatetime", STATE_DRIVER_UPDATE_THROTTLE_DEFAULT);
+    --     end
+    -- end
+    if (option == nil or option == "stateDriverUpdateThrottle") then
+        local value = DebouncePrivate.Options.stateDriverUpdateThrottle or STATE_DRIVER_UPDATE_THROTTLE_DEFAULT;
+        if (type(value) == "number") then
+            value = max(0, min(value, STATE_DRIVER_UPDATE_THROTTLE_DEFAULT));
+            SecureStateDriverManager:SetAttribute("updatetime", value);
+            print("stateDriverUpdateThrottle", value)
+        end
+    end
 end
+
+SecureStateDriverManager:HookScript("OnAttributeChanged", function(_, name, value)
+    print("onattr changed:", name, value)
+end)
+
+-- local frame = CreateFrame("Frame");
+-- frame:SetScript("OnEvent", function(self, event, ...)
+    
+--     print(GetTime(),event,...)
+-- end);
+-- frame:RegisterEvent("UPDATE_MOUSEOVER_UNIT");

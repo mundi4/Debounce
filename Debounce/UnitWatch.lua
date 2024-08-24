@@ -4,6 +4,7 @@ local CUSTOM_TARGET_VALID_UNIT_TOKENS = Constants.CUSTOM_TARGET_VALID_UNIT_TOKEN
 local LLL                             = DebouncePrivate.L;
 local BindingDriver                   = DebouncePrivate.BindingDriver;
 local UnitWatch                       = CreateFrame("Frame", nil, nil, "SecureFrameTemplate,SecureHandlerAttributeTemplate");
+local dump                            = DebouncePrivate.dump;
 
 DebouncePrivate.UnitWatch             = UnitWatch;
 DebouncePrivate.UnitWatchHeaders      = {};
@@ -319,7 +320,6 @@ function UnitWatch:LoadCustomTargets()
     end
 end
 
-
 do
     local _lastSeen = {};
     local _changedAliases = {};
@@ -578,9 +578,41 @@ for i = 1, 2 do
     SecureHandlerWrapScript(button, "OnClick", UnitWatch, [==[
         local alias = self:GetAttribute("alias")
         local value = button
+        print(alias, value)
         if (not value or value == "LeftButton") then
             value = nil
         end
         unitwatch:SetAttribute(alias, value)
     ]==]);
 end
+
+local function AddCustomTargetMenu(owner, rootDescription, contextData)
+    if (InCombatLockdown()) then
+        return;
+    end
+
+    if (not contextData.unit) then
+        return;
+    end
+
+    local unit = DoResolveUnitToken(contextData.unit);
+    if (unit) then
+        rootDescription:CreateDivider();
+        rootDescription:CreateTitle(LLL["ADDON_NAME"]);
+
+        for i = 1, 2 do
+            local desc = rootDescription:CreateButton(LLL["TYPE_SETCUSTOM" .. i], function()
+                DebouncePrivate.UnitWatch:SetAttribute("custom" .. i, unit);
+            end);
+            desc:SetEnabled(function()
+                return not InCombatLockdown();
+            end);
+        end
+    end
+end
+
+Menu.ModifyMenu("MENU_UNIT_SELF", AddCustomTargetMenu);
+Menu.ModifyMenu("MENU_UNIT_TARGET", AddCustomTargetMenu);
+Menu.ModifyMenu("MENU_UNIT_FOCUS", AddCustomTargetMenu);
+Menu.ModifyMenu("MENU_UNIT_RAID", AddCustomTargetMenu);
+Menu.ModifyMenu("MENU_UNIT_PARTY1", AddCustomTargetMenu);

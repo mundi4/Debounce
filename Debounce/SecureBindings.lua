@@ -1,3 +1,7 @@
+--[[
+FIXME 유닛 popup메뉴에 들어갔다가 나오면 hover값이 nil로 변경되지 않음
+]]
+
 local _, DebouncePrivate = ...;
 local BindingDriver      = DebouncePrivate.BindingDriver;
 local Constants          = DebouncePrivate.Constants;
@@ -61,6 +65,7 @@ SecureHandlerExecute(BindingDriver, [[
 	_macrotextsSeen = newtable()
 	_isUpdatingMacrotests = false
 	_customStatesUpdating = newtable()
+	hovercheck = false
 ]]);
 
 
@@ -470,6 +475,7 @@ BindingDriver:SetAttribute("setup_onenter", applyConstants([==[
 	local unit = self:GetEffectiveAttribute("unit")
     if (not unit) then return end
 
+	hovercheck = false
 	local unitframe = ccframes[self]
     local reaction
     if (PlayerCanAssist(unit)) then
@@ -501,15 +507,16 @@ BindingDriver:SetAttribute("setup_onleave", [==[
 	local unitframe = States.unitframe
 	if (not unitframe) then return end
 
-	if (unitframe.l) then
-		local x, y = unitframe.frame:GetMousePosition()
-		if (x and x >= unitframe.l and x <= unitframe.r and y >= unitframe.b and y <= unitframe.t) then
-			--debounce_driver:SetAttribute("hovercheck", "?")
-			return
-		end
-	end
+	-- if (unitframe.l) then
+	-- 	local x, y = unitframe.frame:GetMousePosition()
+	-- 	if (x and x >= unitframe.l and x <= unitframe.r and y >= unitframe.b and y <= unitframe.t) then
+	-- 		hovercheck = true
+	-- 		return
+	-- 	end
+	-- end
 
 	States.unitframe = nil
+	hovercheck = false
 	if (debounce_driver:RunAttribute("SetUnit", "hover", nil) or HoverBindings) then
 		DirtyFlags.unitframe = true
 		debounce_driver:SetAttribute("state-unitexists", "unitframe")

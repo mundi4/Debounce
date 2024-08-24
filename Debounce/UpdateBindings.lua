@@ -16,7 +16,7 @@ local CUSTOM_STATE_MODES      = Constants.CUSTOM_STATE_MODES;
 
 local dump                               = DebouncePrivate.dump;
 local luatype                            = type;
-local format, tostring                   = format, tostring;
+local format, tostring, select           = format, tostring, select;
 local wipe, ipairs, pairs, tinsert, sort = wipe, ipairs, pairs, tinsert, sort;
 local band, bor, bnot                    = bit.band, bit.bor, bit.bnot;
 local InCombatLockdown                   = InCombatLockdown;
@@ -45,8 +45,9 @@ local STATE_EVAL_EXPRESSIONS             = {
     petbattle = format(STATE_EVAL_STRING_FORMAT, "[petbattle]"),
 };
 
-local HOVER_CHECK_SNIPPET                = format([[
-if (value ~= "unitframe" and States.unitframe) then
+
+local HOVER_CHECK_SNIPPET = format([[
+if (hovercheck and value ~= "unitframe") then
     local unitframe = States.unitframe
     local clear = not unitframe.frame:IsVisible()
 
@@ -61,6 +62,7 @@ if (value ~= "unitframe" and States.unitframe) then
 
     if (clear) then
         States.unitframe = nil
+        hovercheck = false
         if (self:RunAttribute("SetUnit", "hover", nil)) then
             DirtyFlags.unitframe = true
         end
@@ -316,6 +318,8 @@ wipe(States)
     ]]);
 
     DebouncePrivate.ClearMacroTextCache(_macrotexts);
+
+    DebouncePrivate.ApplyOptions("stateDriverUpdateThrottle");
 
     DebouncePrivate.callbacks:Fire("OnBindingsUpdated");
 
@@ -833,11 +837,33 @@ if (name == "state-unitexists") then
     self:SetAttribute("state-unitexists", 0)
 ]]);
 
+
     -- Update States
     appendLine("local stateValue")
-    if (_states.unitframe) then
-        appendLine(HOVER_CHECK_SNIPPET);
+    --appendLine(HOVER_CHECK_SNIPPET);
+    appendLine([[
+if (States.unitframe) then
+    local unitframe = States.unitframe
+    local unit = unitframe.frame:GetEffectiveAttribute("unit");
+    if (UnitExists(unit)) then
+        local reaction
+        if (PlayerCanAssist(unit)) then
+            reaction = %d
+        elseif (PlayerCanAttack(unit)) then
+            reaction = %d
+        else
+            reaction = %d
+        end
+
+        if (unitframe.unit ~= unit or unitframe.reaction ~= reaction) then
+            unitframe.unit = unit
+            unitframe.reaction = reaction
+            self:RunAttribute("SetUnit", "hover", unit)
+            DirtyFlags.unitframe = true
+        end
     end
+end
+]], Constants.REACTION_HELP, Constants.REACTION_HARM, Constants.REACTION_NONE);
 
     -- Update Basic States
     local stateArray = {};

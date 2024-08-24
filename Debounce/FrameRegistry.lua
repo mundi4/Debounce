@@ -146,6 +146,19 @@ function DebouncePrivate.UnregisterFrame(button)
     end
 end
 
+local function SetPropagate(...)
+    local n = select("#", ...);
+    for i = 1, n do
+        local frame = select(i, ...);
+        if (frame and frame.SetPropagateMouseMotion) then
+            frame:SetPropagateMouseMotion(true);
+        end
+        if (frame.GetChildren) then
+            SetPropagate(frame:GetChildren());
+        end
+    end
+end
+
 function DebouncePrivate.UpdateRegisteredClicks(button)
     if (DebouncePrivate.CliqueDetected) then
         return;
@@ -161,6 +174,10 @@ function DebouncePrivate.UpdateRegisteredClicks(button)
     local trigger = DebouncePrivate.Options and DebouncePrivate.Options.unitframeUseMouseDown and "AnyDown" or "AnyUp";
     button:RegisterForClicks(trigger);
     button:EnableMouseWheel(true);
+
+    -- 프레임 내에 마우스에 반응하는 자식 프레임이 있는 경우 그 자식 프레임으로 마우스를 올렸을 때
+    -- 부모 프레임에서 onleave 스크립트가 호출되지 않게 함.
+    SetPropagate(button:GetChildren());
 end
 
 local function registerBlizzardFrame(frame, category)

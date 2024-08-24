@@ -69,148 +69,6 @@ local function _setSelected(data)
     return MenuResponse.Refresh;
 end
 
--- local GenerateMenu;
--- local function GenerateMenuItem(dropdown, rootDescription, menuInfo, targetObj)
---     local shouldShow = menuInfo and (menuInfo.canShow == nil or menuInfo.canShow(menuInfo));
---     if (not shouldShow) then
---         return;
---     end
-
---     if (menuInfo.initFunc) then
---         menuInfo.initFunc(menuInfo);
---         menuInfo.initFunc = nil;
---     end
-
---     if (menuInfo == SEPARATOR or menuInfo.type == "divider") then
---         rootDescription:QueueDivider();
---         return;
---     elseif (menuInfo.type == "title") then
---         rootDescription:QueueTitle(menuInfo.text);
---         return;
---     end
-
---     local data = menuInfo.data or menuInfo;
---     data.targetObj = data.targetObj or targetObj;
-
---     local description;
---     if (menuInfo == SEPARATOR) then
---         rootDescription:QueueDivider();
---     elseif (menuInfo.type == "title") then
---         rootDescription:QueueTitle(menuInfo.text);
---     elseif (menuInfo.type == "radio") then
---         local isSelected, setSelected = menuInfo.isSelected, menuInfo.setSelected;
---         if (isSelected == nil) then
---             isSelected = _isSelected
---         end
---         if (setSelected == nil) then
---             setSelected = _setSelected
---         end
---         description = rootDescription:CreateRadio(menuInfo.text, isSelected, setSelected, data);
---     elseif (menuInfo.type == "checkbox") then
---         description = rootDescription:CreateCheckbox(menuInfo.text, menuInfo.isSelected, menuInfo.setSelected, menuInfo.args);
---     elseif (menuInfo.type == "bits") then
---         local isSelected, setSelected = menuInfo.isSelected, menuInfo.setSelected;
---         if (isSelected == nil) then
---             isSelected = _hasBit
---         end
---         if (setSelected == nil) then
---             setSelected = _toggleBit
---         end
---         description = rootDescription:CreateCheckbox(menuInfo.text, isSelected, setSelected, data);
---     else
---         description = rootDescription:CreateButton(menuInfo.text, menuInfo.func, menuInfo.args);
---     end
-
---     if (description) then
---         description:SetData(data);
-
---         if (menuInfo.isEnabled ~= nil) then
---             description:SetEnabled(menuInfo.isEnabled);
---         end
-
---         description:AddInitializer(function(button, elementDescription, menu)
---             local error = menuInfo.error;
---             if (type(error) == "function") then
---                 error = error(data);
---             end
-
---             if (error) then
---                 print("error")
---                 button.fontString:SetTextColor(ERROR_COLOR:GetRGB());
---             else
---                 local isActive = menuInfo.isActive;
---                 if (type(isActive) == "function") then
---                     isActive = isActive(menuInfo);
---                 end
-
---                 if (isActive) then
---                     button.fontString:SetTextColor(BLUE_FONT_COLOR:GetRGB());
---                 else
---                     button.fontString:SetTextColor(HIGHLIGHT_FONT_COLOR:GetRGB());
---                 end
---             end
-
---             local instruction = menuInfo.tooltip;
---             if (type(instruction) == "function") then
---                 instruction = instruction(menuInfo);
---             end
-
---             if (instruction) then
---                 local text = elementDescription.text .. LLL["_HAS_TOOLTIP_SUFFIX"];
---                 button.fontString:SetText(text);
---             else
---                 button.fontString:SetText(elementDescription.text);
---                 -- elementDescription:SetTooltip(function(tooltip, elementDescription)
---                 --     GameTooltip_SetTitle(tooltip, MenuUtil.GetElementText(elementDescription));
---                 --     GameTooltip_AddInstructionLine(tooltip, instruction);
---                 -- end);
---             end
---         end);
-
-
-
-
---         -- description:SetTooltip(function(tooltip, elementDescription)
---         --     local instruction = menuItem.instruction;
---         --     if (type(instruction) == "function") then
---         --         instruction = instruction(menuItem);
---         --     end
-
---         --     local error = menuItem.error;
---         --     if (type(error) == "function") then
---         --         error = error(menuItem);
---         --     end
-
---         --     if (instruction or error) then
---         --         GameTooltip_SetTitle(tooltip, MenuUtil.GetElementText(elementDescription));
---         --         if (instruction) then
---         --             GameTooltip_AddInstructionLine(tooltip, instruction);
---         --         end
---         --         if (error) then
---         --             GameTooltip_AddErrorLine(tooltip, error);
---         --         end
---         --     end
---         -- end);
-
---         local children = menuInfo.menuItems;
---         if (children) then
---             if (type(children) == "function") then
---                 children = children(menuInfo);
---             end
---         end
---         if (children and #children > 0) then
---             description:CreateTitle(MenuUtil.GetElementText(description));
---             GenerateMenu(dropdown, description, children, data.targetObj);
---         end
---     end
--- end
-
--- function GenerateMenu(dropdown, rootDescription, menuInfoArr, targetObj)
---     for _, menuInfo in ipairs(menuInfoArr) do
---         GenerateMenuItem(dropdown, rootDescription, menuInfo, targetObj);
---     end
--- end
-
 local function SetInstrcutionTooltip(description, text)
     description:SetTooltip(function(tooltip, elementDescription)
         GameTooltip_SetTitle(tooltip, MenuUtil.GetElementText(elementDescription));
@@ -224,20 +82,6 @@ local function SetErrorTooltip(description, text)
         GameTooltip_AddErrorLine(tooltip, text);
     end);
 end
-
-do
-
-end
--------------------------------------------------------------
--------------------------------------------------------------
--------------------------------------------------------------
--------------------------------------------------------------
--------------------------------------------------------------
-
-
-
-
-
 
 
 --------------------------------------------------------------------------------
@@ -494,6 +338,36 @@ function DebounceUI.SetupOptionsDropdownMenu(dropdown, rootDescription)
             end);
         end
     end
+
+    do
+        local stateDriverUpdateThrottleDescription = rootDescription:CreateButton(LLL["STATE_DRIVER_UPDATE_THROTTLE"]);
+        -- stateDriverUpdateThrottleDescription:CreateCheckbox(LLL["STATE_DRIVER_UPDATE_THROTTLE_DISABLE"], function()
+        --     return DebouncePrivate.Options.removeStateDriverUpdateThrottle and true or false;
+        -- end, function()
+        --     DebouncePrivate.Options.removeStateDriverUpdateThrottle = (not DebouncePrivate.Options.removeStateDriverUpdateThrottle) or nil;
+        --     DebouncePrivate.ApplyOptions("removeStateDriverUpdateThrottle");
+        --     return MenuResponse.Refresh;
+        -- end);
+        SetInstrcutionTooltip(stateDriverUpdateThrottleDescription, LLL["STATE_DRIVER_UPDATE_THROTTLE_DESC"]);
+        stateDriverUpdateThrottleDescription:SetTooltip(function(tooltip, elementDescription)
+            GameTooltip_SetTitle(tooltip, MenuUtil.GetElementText(elementDescription));
+            GameTooltip_AddInstructionLine(tooltip, LLL["STATE_DRIVER_UPDATE_THROTTLE_DESC"]);
+            GameTooltip_AddBlankLineToTooltip(tooltip);
+            GameTooltip_AddErrorLine(tooltip, LLL["STATE_DRIVER_UPDATE_THROTTLE_WARNING"]);
+        end);
+
+        local sliderDescription = stateDriverUpdateThrottleDescription:CreateTemplate("DebounceSliderMenuTemplate");
+        sliderDescription:AddInitializer(function(frame, description, menu)
+            frame:UpdateVisibleState();
+        end)
+    end
+
+    -- do
+    --     local sliderDescription = rootDescription:CreateTemplate("DebounceSliderMenuTemplate");
+    --     sliderDescription:AddInitializer(function(frame, description, menu)
+    --         frame:OnAttach();
+    --     end)
+    -- end
 end
 
 --------------------------------------------------------------------------------

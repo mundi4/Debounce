@@ -882,4 +882,30 @@
 		</Scripts>
 	</Frame>
 
+	<Frame name="DebounceSliderMenuTemplate" mixin="DebounceStateDriverUpdateThrottleSliderMixin" virtual="true">
+		<Size x="200" y="16"/>
+		<Frames>
+			<Frame parentKey="ValueText" name="ValueText" inherits="PropertyFontStringTemplate">
+				<Size x="32" y="0"/>
+				<Anchors>
+					<Anchor point="TOPRIGHT"/>
+					<Anchor point="BOTTOMRIGHT"/>
+				</Anchors>
+			</Frame>
+			<Slider parentKey="Slider" name="Slider" minValue="0" maxValue="0.2" valueStep="0.01" obeyStepOnDrag="true" inherits="PropertySliderTemplate">
+				<Size x="0" y="17"/>
+				<Anchors>
+					<Anchor point="LEFT" />
+					<Anchor point="RIGHT" relativeKey="$parent.ValueText" relativePoint="LEFT" x="-5" y="0"/>
+				</Anchors>
+				<Scripts>
+					<!-- <OnLoad method="OnLoad" inherit="append"/> -->
+				</Scripts>
+			</Slider>
+		</Frames>
+		<Scripts>
+			<OnLoad method="OnLoad" />
+		</Scripts>
+	</Frame>
+
 </Ui>

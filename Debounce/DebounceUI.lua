@@ -2568,6 +2568,30 @@ function DebounceUI.GetSelectedSideTab()
 	return _selectedSideTab;
 end
 
+DebounceStateDriverUpdateThrottleSliderMixin = {};
+
+function DebounceStateDriverUpdateThrottleSliderMixin:OnLoad()
+	self.Slider:SetAccessorFunction(function()
+		return DebouncePrivate.Options.stateDriverUpdateThrottle or 0.2;
+	end);
+
+	self.Slider:SetMutatorFunction(function(value)
+		value = floor(value * 1000 + 1) / 1000;
+		DebouncePrivate.Options.stateDriverUpdateThrottle = value;
+		DebouncePrivate.ApplyOptions("stateDriverUpdateThrottle");
+	end);
+
+	self.Slider:RegisterPropertyChangeHandler("OnValueChanged", function(slider, value, isMouse)
+		self.ValueText.Text:SetText(format("%.2f", value):gsub("%.?0+$", ""));
+	end);
+
+	self.Slider:UpdateVisibleState();
+end
+
+function DebounceStateDriverUpdateThrottleSliderMixin:UpdateVisibleState()
+	self.Slider:UpdateVisibleState();
+end
+
 -- temp
 DebounceUI.UNIT_INFO = UNIT_INFO;
 DebounceUI.BINDING_TYPE_NAMES = BINDING_TYPE_NAMES;
@@ -2584,3 +2608,4 @@ function DebounceUI.ToggleDropDownMenu(dropdown, button)
 	-- local w, h = button:GetSize();
 	-- ToggleDropDownMenu(1, "root", dropdown, button, w + 5, h + 5);
 end
+
