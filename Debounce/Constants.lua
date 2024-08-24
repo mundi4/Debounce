@@ -5,7 +5,7 @@ local Constants                           = DebouncePrivate.Constants;
 Constants.DEBUG                           = false;
 --@debug@
 -- Constants.DEBUG                           = true;
---@debug@
+--@end-debug@
 Constants.NIL                             = "\0";
 Constants.DB_VERSION                      = 2;
 Constants.MAX_NUM_ACTIONS_PER_LAYER       = 1000;
