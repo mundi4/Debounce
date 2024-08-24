@@ -362,6 +362,17 @@ function DebounceUI.SetupOptionsDropdownMenu(dropdown, rootDescription)
         end)
     end
 
+    do
+        local addCustomTargetMenusToUnitPopupDescription = rootDescription:CreateCheckbox(LLL["ADD_CUSTOM_TARGET_MENUS_TO_UNIT_POPUP"], function()
+            return DebouncePrivate.Options.addCustomTargetMenusToUnitPopup and true or false;
+        end, function()
+            DebouncePrivate.Options.addCustomTargetMenusToUnitPopup = (not DebouncePrivate.Options.addCustomTargetMenusToUnitPopup) or nil;
+            DebouncePrivate.ApplyOptions("addCustomTargetMenusToUnitPopup");
+            return MenuResponse.Refresh;
+        end);
+        SetInstrcutionTooltip(addCustomTargetMenusToUnitPopupDescription, LLL["ADD_CUSTOM_TARGET_MENUS_TO_UNIT_POPUP_DESC"]);
+    end
+
     -- do
     --     local sliderDescription = rootDescription:CreateTemplate("DebounceSliderMenuTemplate");
     --     sliderDescription:AddInitializer(function(frame, description, menu)
@@ -1003,4 +1014,3 @@ do
         CreateDeleteMenu(rootDescription);
     end
 end
-

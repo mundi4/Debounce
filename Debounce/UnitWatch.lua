@@ -586,7 +586,10 @@ for i = 1, 2 do
     ]==]);
 end
 
-local function AddCustomTargetMenu(owner, rootDescription, contextData)
+local function AddCustomTargetMenus(owner, rootDescription, contextData)
+    if (not DebouncePrivate.Options.addCustomTargetMenusToUnitPopup) then
+        return;
+    end
     if (InCombatLockdown()) then
         return;
     end
@@ -599,7 +602,6 @@ local function AddCustomTargetMenu(owner, rootDescription, contextData)
     if (unit) then
         rootDescription:CreateDivider();
         rootDescription:CreateTitle(LLL["ADDON_NAME"]);
-
         for i = 1, 2 do
             local desc = rootDescription:CreateButton(LLL["TYPE_SETCUSTOM" .. i], function()
                 DebouncePrivate.UnitWatch:SetAttribute("custom" .. i, unit);
@@ -607,12 +609,22 @@ local function AddCustomTargetMenu(owner, rootDescription, contextData)
             desc:SetEnabled(function()
                 return not InCombatLockdown();
             end);
+            -- desc:AddInitializer(function(button, elementDescription, menu)
+            --     local current = DebouncePrivate.Units["custom" .. i];
+            --     if (current and UnitIsUnit(unit, current)) then
+            --         button.fontString:SetTextColor(BLUE_FONT_COLOR:GetRGB());
+            --     else
+            --         button.fontString:SetTextColor(HIGHLIGHT_FONT_COLOR:GetRGB());
+            --     end
+            -- end);
         end
     end
 end
 
-Menu.ModifyMenu("MENU_UNIT_SELF", AddCustomTargetMenu);
-Menu.ModifyMenu("MENU_UNIT_TARGET", AddCustomTargetMenu);
-Menu.ModifyMenu("MENU_UNIT_FOCUS", AddCustomTargetMenu);
-Menu.ModifyMenu("MENU_UNIT_RAID", AddCustomTargetMenu);
-Menu.ModifyMenu("MENU_UNIT_PARTY1", AddCustomTargetMenu);
+Menu.ModifyMenu("MENU_UNIT_SELF", AddCustomTargetMenus);
+Menu.ModifyMenu("MENU_UNIT_TARGET", AddCustomTargetMenus);
+Menu.ModifyMenu("MENU_UNIT_FOCUS", AddCustomTargetMenus);
+Menu.ModifyMenu("MENU_UNIT_PARTY", AddCustomTargetMenus);
+Menu.ModifyMenu("MENU_UNIT_RAID", AddCustomTargetMenus);
+Menu.ModifyMenu("MENU_UNIT_BOSS", AddCustomTargetMenus); -- not tested
+Menu.ModifyMenu("MENU_UNIT_ARENA", AddCustomTargetMenus); -- not tested

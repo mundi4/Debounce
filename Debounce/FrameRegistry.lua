@@ -91,25 +91,25 @@ function DebouncePrivate.RegisterFrame(button, type)
 
     local frameType = UNITFRAME_TYPES[type] or UNITFRAME_TYPES.unknown;
     button:SetAttribute("debounce_frametype", frameType);
-    if (DebouncePrivate.blizzardFrames[button]) then
-        local insetL, insetR, insetT, insetB = button:GetHitRectInsets();
-        insetL = floor(insetL + 0.5);
-        insetR = floor(insetR + 0.5);
-        insetT = floor(insetT + 0.5);
-        insetB = floor(insetB + 0.5);
-        button:SetAttribute("debounce_insets", format("%d,%d,%d,%d", insetL, insetR, insetT, insetB));
-    end
+    -- if (DebouncePrivate.blizzardFrames[button]) then
+    --     local insetL, insetR, insetT, insetB = button:GetHitRectInsets();
+    --     insetL = floor(insetL + 0.5);
+    --     insetR = floor(insetR + 0.5);
+    --     insetT = floor(insetT + 0.5);
+    --     insetB = floor(insetB + 0.5);
+    --     button:SetAttribute("debounce_insets", format("%d,%d,%d,%d", insetL, insetR, insetT, insetB));
+    -- end
 
     SecureHandlerSetFrameRef(DebouncePrivate.BindingDriver, "clickcast_button", button);
     SecureHandlerExecute(DebouncePrivate.BindingDriver, [=[
 		local button = self:GetFrameRef("clickcast_button")
 		self:RunFor(button, self:GetAttribute("InitFrame"))
 		ccframes[button].frameType = button:GetAttribute("debounce_frametype")
-		local insets = button:GetAttribute("debounce_insets")
-		if (insets) then
-			local l, r, t, b = strsplit(",", insets)
-			ccframes[button].insetL, ccframes[button].insetR, ccframes[button].insetT, ccframes[button].insetB = tonumber(l), tonumber(r), tonumber(t), tonumber(b)
-		end
+		-- local insets = button:GetAttribute("debounce_insets")
+		-- if (insets) then
+		-- 	local l, r, t, b = strsplit(",", insets)
+		-- 	ccframes[button].insetL, ccframes[button].insetR, ccframes[button].insetT, ccframes[button].insetB = tonumber(l), tonumber(r), tonumber(t), tonumber(b)
+		-- end
 	]=]);
 
     if (not DebouncePrivate.CliqueDetected) then
