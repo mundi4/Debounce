@@ -603,7 +603,9 @@ local function AddCustomTargetMenus(owner, rootDescription, contextData)
         rootDescription:CreateTitle(LLL["ADDON_NAME"]);
         for i = 1, 2 do
             local desc = rootDescription:CreateButton(LLL["TYPE_SETCUSTOM" .. i], function()
-                DebouncePrivate.UnitWatch:SetAttribute("custom" .. i, unit);
+                if (not InCombatLockdown()) then
+                    DebouncePrivate.UnitWatch:SetAttribute("custom" .. i, unit);
+                end
             end);
             desc:SetEnabled(function()
                 return not InCombatLockdown();
