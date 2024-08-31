@@ -26,6 +26,9 @@ local GetBindingIssue        = DebouncePrivate.GetBindingIssue;
 local IsKeyInvalidForAction  = DebouncePrivate.IsKeyInvalidForAction
 local GetSpellNameAndIconID  = DebouncePrivate.GetSpellNameAndIconID;
 local GetSpellTabNameAndIcon = DebouncePrivate.GetSpellTabNameAndIcon;
+local InCombatLockdown       = InCombatLockdown;
+local QUESTION_MARK_ICON_NUM = 134400;
+local TEMP_MACRO_NAME        = "zzDbncTmpMcr"
 
 local _selectedTab           = 1;
 local _selectedSideTab       = 1;
@@ -36,7 +39,73 @@ local _newlyInsertedActions  = {};
 
 DebounceUI.ActionMenuRootTag = "DEBOUNCE_ACTION_ROOT";
 
-local BINDING_TYPE_NAMES     = {
+local _macrotextIconCache    = {};
+local function GetMacrotextIcon(macrotext)
+	if (macrotext == nil or macrotext == "") then
+		return QUESTION_MARK_ICON_NUM;
+	end
+
+	-- for line in string.gmatch(macrotext, "[^\r\n]+") do
+	-- 	-- Trim trailing whitespace from each line
+	-- 	line = string.gsub(line, "%s+$", "")
+
+	-- 	local val = SecureCmdOptionParse(line);
+	-- 	-- if (string.sub(line, 1, 12):lower() == "#showtooltip") then
+	-- 	-- 	val = string.sub(line, 13):gsub("%s+", ""):match("%s*(.*)");
+	-- 	-- elseif (string.sub(line, 1, 1) == "/") then
+	-- 	-- 	val = string.match(line, "%s+(.*)")
+	-- 	-- end
+	-- 	if (val and val:len() > 0) then
+	-- 		local _, icon = GetSpellNameAndIconID(val);
+	-- 		if (icon == nil) then
+	-- 			_, _, _, _, _, _, _, _, _, icon = C_Item.GetItemInfo(val);
+	-- 		end
+	-- 		return icon;
+	-- 	end
+	-- end
+
+	if (_macrotextIconCache[macrotext]) then
+		return _macrotextIconCache[macrotext];
+	end
+	if (InCombatLockdown()) then
+		return nil;
+	end
+	if (MacroFrame and MacroFrame:IsShown()) then
+		return nil;
+	end
+
+	local ret;
+	if (not GetMacroInfo(TEMP_MACRO_NAME)) then
+		local cnt1, cnt2 = GetNumMacros();
+		local isCharacterSpecific;
+		if (cnt1 >= MAX_ACCOUNT_MACROS) then
+			if (cnt2 >= MAX_CHARACTER_MACROS) then
+				return nil;
+			end
+			isCharacterSpecific = true;
+		end
+		CreateMacro(TEMP_MACRO_NAME, QUESTION_MARK_ICON_NUM, macrotext, isCharacterSpecific);
+	else
+		EditMacro(TEMP_MACRO_NAME, nil, nil, macrotext);
+	end
+
+	_, ret = GetMacroInfo(TEMP_MACRO_NAME);
+	DeleteMacro(TEMP_MACRO_NAME);
+	_macrotextIconCache[macrotext] = ret;
+	return ret;
+end
+
+local function ClearMacrotextIconCache()
+	if (DebounceFrame:IsShown()) then
+		return;
+	end
+	if (DebounceOverviewFrame:IsShown()) then
+		return;
+	end
+	wipe(_macrotextIconCache);
+end
+
+local BINDING_TYPE_NAMES   = {
 	[Constants.SPELL] = LLL["TYPE_SPELL"],
 	[Constants.ITEM] = LLL["TYPE_ITEM"],
 	[Constants.MACRO] = LLL["TYPE_MACRO"],
@@ -52,13 +121,13 @@ local BINDING_TYPE_NAMES     = {
 	[Constants.UNUSED] = LLL["TYPE_UNUSED"],
 };
 
-local UNIT_FRAME_REACTIONS   = {
+local UNIT_FRAME_REACTIONS = {
 	"HELP",
 	"HARM",
 	"OTHER",
 };
 
-local UNIT_FRAME_TYPES       = {
+local UNIT_FRAME_TYPES     = {
 	"PLAYER",
 	"PET",
 	"GROUP",
@@ -68,7 +137,7 @@ local UNIT_FRAME_TYPES       = {
 	"UNKNOWN",
 };
 
-local UNIT_INFO              = {
+local UNIT_INFO            = {
 	player = {
 		name = LLL["UNIT_PLAYER"],
 		unitexists = false,
@@ -287,6 +356,9 @@ local function NameAndIconFromElementData(elementData)
 	elseif (type == Constants.MACROTEXT) then
 		actionName = action.name;
 		actionIcon = action.icon
+		if (actionIcon == 134400) then
+			actionIcon = GetMacrotextIcon(action.value) or actionIcon;
+		end
 	elseif (type == Constants.ITEM) then
 		local name = C_Item.GetItemNameByID(value);
 		local icon = C_Item.GetItemIconByID(value);
@@ -1526,6 +1598,7 @@ function DebounceFrameMixin:OnHide()
 		DebounceActionPlacerFrame:Hide();
 	end
 	_pickedupInfo = nil;
+	ClearMacrotextIconCache();
 end
 
 function DebounceFrameMixin:OnEvent(event, arg1)
@@ -2313,6 +2386,7 @@ end
 
 function DebounceOverviewFrameMixin:OnHide()
 	DebounceFrame.OverviewPortrait:SetSelectedState(false);
+	ClearMacrotextIconCache();
 end
 
 function DebounceOverviewFrameMixin:OnEvent(event)
@@ -2609,3 +2683,29 @@ function DebounceUI.ToggleDropDownMenu(dropdown, button)
 	-- ToggleDropDownMenu(1, "root", dropdown, button, w + 5, h + 5);
 end
 
+-- local temp = {
+-- 	[[#showtooltip
+-- /cast Regrowth]],
+
+-- 	[[#showtooltip [@target,noexists]Regrowth;Hearthstone
+-- /use [@target,noexists]Regrowth;Hearthstone]],
+
+-- 	[[/use [@target,noexists]Regrowth;Hearthstone]],
+
+-- 	[[#showtooltip [@target,exists]Regrowth;Hearthstone
+-- /use [@target,exists]Regrowth;Hearthstone]],
+
+-- 	[[/use [@target,exists]Regrowth;Hearthstone]],
+
+-- 	[[/use [@custom1,exists]Regrowth;Hearthstone]],
+
+-- 	[[/use [@custom1,noexists]Regrowth;Hearthstone]],
+-- }
+
+-- for index, value in ipairs(temp) do
+-- 	--dump("temp" .. index, { value, { SecureCmdOptionParse(value) } })
+-- 	print("###" .. index)
+-- 	local icon = GetMacrotextIcon(value)
+-- 	print(icon)
+-- 	print("---###")
+-- end

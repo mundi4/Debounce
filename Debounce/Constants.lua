@@ -4,7 +4,7 @@ local Constants                           = DebouncePrivate.Constants;
 
 Constants.DEBUG                           = false;
 --@debug@
--- Constants.DEBUG                           = true;
+Constants.DEBUG                           = true;
 --@end-debug@
 Constants.NIL                             = "\0";
 Constants.DB_VERSION                      = 2;
