@@ -68,7 +68,7 @@ In addition to the units supported by WoW, you can use special units such as `ta
 **Note:** This will only work if there is exactly one unit assigned to that role in the party/raid.
 
 
-#### Custom Targets
+### Custom Targets
 You can set up to two custom targets, which function similarly to the focus target. You can use these custom targets as the targets of your actions or in the **Macro Texts** with `@custom1` and `@custom2`. (e.g., `/cast [@custom1,exists][] Rejuvenation`)
 
 **You can assign a custom target from the following units:** `player`, `pet`, `party1` to `party4`, `raid1` to `raid40`, `boss1` to `boss8`, `arena1` to `arena5`.
