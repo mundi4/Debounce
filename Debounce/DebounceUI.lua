@@ -350,13 +350,13 @@ local function NameAndIconFromElementData(elementData)
 		macroName, actionIcon = GetMacroInfo(value);
 		if (not macroName) then
 			macroName = value;
-			actionIcon = 134400;
+			actionIcon = QUESTION_MARK_ICON_NUM;
 		end
 		actionName = macroName;
 	elseif (type == Constants.MACROTEXT) then
 		actionName = action.name;
 		actionIcon = action.icon
-		if (actionIcon == 134400) then
+		if (actionIcon == QUESTION_MARK_ICON_NUM) then
 			actionIcon = GetMacrotextIcon(action.value) or actionIcon;
 		end
 	elseif (type == Constants.ITEM) then
@@ -414,7 +414,7 @@ local function NameAndIconFromElementData(elementData)
 		skipTypeName = true;
 	else
 		actionName = action.name or LLL["UNNAMED_ACTION"];
-		actionIcon = action.icon or 134400;
+		actionIcon = action.icon or QUESTION_MARK_ICON_NUM;
 	end
 
 	if (not skipTypeName) then
@@ -424,7 +424,7 @@ local function NameAndIconFromElementData(elementData)
 		end
 	end
 	actionName = actionName or "?";
-	return actionName, actionIcon or 134400;
+	return actionName, actionIcon or QUESTION_MARK_ICON_NUM;
 end
 
 local function ColoredNameAndIconFromElementData(elementData)
