@@ -23,7 +23,7 @@ local GetMountInfoByID    = C_MountJournal.GetMountInfoByID;
 local IsConditionalAction = DebouncePrivate.IsConditionalAction;
 
 local BindingDriver       = CreateFrame("Frame", DEBUG and "DebounceBindingDriver" or nil, nil, "SecureHandlerBaseTemplate,SecureHandlerAttributeTemplate");
-BindingDriver:SetAttribute("unit", "target");
+BindingDriver:SetAttribute("unit", "player");
 RegisterUnitWatch(BindingDriver, true);
 SecureHandlerExecute(BindingDriver, [[
 	DelegateFrames = newtable()

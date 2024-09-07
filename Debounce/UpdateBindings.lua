@@ -45,49 +45,49 @@ local STATE_EVAL_EXPRESSIONS             = {
     petbattle = format(STATE_EVAL_STRING_FORMAT, "[petbattle]"),
 };
 
+-- not used
+-- local HOVER_CHECK_SNIPPET = format([[
+-- if (hovercheck and value ~= "unitframe") then
+--     local unitframe = States.unitframe
+--     local clear = not unitframe.frame:IsVisible()
 
-local HOVER_CHECK_SNIPPET = format([[
-if (hovercheck and value ~= "unitframe") then
-    local unitframe = States.unitframe
-    local clear = not unitframe.frame:IsVisible()
+--     if (not clear) then
+--         if (unitframe.l) then
+--             local x, y = unitframe.frame:GetMousePosition()
+--             if (not x or (x < unitframe.l or x > unitframe.r or y < unitframe.b or y > unitframe.t)) then
+--                 clear = true
+--             end
+--         end
+--     end
 
-    if (not clear) then
-        if (unitframe.l) then
-            local x, y = unitframe.frame:GetMousePosition()
-            if (not x or (x < unitframe.l or x > unitframe.r or y < unitframe.b or y > unitframe.t)) then
-                clear = true
-            end
-        end
-    end
+--     if (clear) then
+--         States.unitframe = nil
+--         hovercheck = false
+--         if (self:RunAttribute("SetUnit", "hover", nil)) then
+--             DirtyFlags.unitframe = true
+--         end
+--     else
+--         local unit = unitframe.frame:GetEffectiveAttribute("unit");
+--         if (UnitExists(unit)) then
+--             local reaction
+--             if (PlayerCanAssist(unit)) then
+--                 reaction = %d
+--             elseif (PlayerCanAttack(unit)) then
+--                 reaction = %d
+--             else
+--                 reaction = %d
+--             end
 
-    if (clear) then
-        States.unitframe = nil
-        hovercheck = false
-        if (self:RunAttribute("SetUnit", "hover", nil)) then
-            DirtyFlags.unitframe = true
-        end
-    else
-        local unit = unitframe.frame:GetEffectiveAttribute("unit");
-        if (UnitExists(unit)) then
-            local reaction
-            if (PlayerCanAssist(unit)) then
-                reaction = %d
-            elseif (PlayerCanAttack(unit)) then
-                reaction = %d
-            else
-                reaction = %d
-            end
-
-            if (unitframe.unit ~= unit or unitframe.reaction ~= reaction) then
-                unitframe.unit = unit
-                unitframe.reaction = reaction
-                self:RunAttribute("SetUnit", "hover", unit)
-                DirtyFlags.unitframe = true
-            end
-        end
-    end
-end
-]], Constants.REACTION_HELP, Constants.REACTION_HARM, Constants.REACTION_NONE);
+--             if (unitframe.unit ~= unit or unitframe.reaction ~= reaction) then
+--                 unitframe.unit = unit
+--                 unitframe.reaction = reaction
+--                 self:RunAttribute("SetUnit", "hover", unit)
+--                 DirtyFlags.unitframe = true
+--             end
+--         end
+--     end
+-- end
+-- ]], Constants.REACTION_HELP, Constants.REACTION_HARM, Constants.REACTION_NONE);
 
 
 local NextButtonName;
@@ -837,10 +837,6 @@ if (name == "state-unitexists") then
     self:SetAttribute("state-unitexists", 0)
 ]]);
 
-
-    -- Update States
-    appendLine("local stateValue")
-    --appendLine(HOVER_CHECK_SNIPPET);
     appendLine([[
 if (States.unitframe) then
     local unitframe = States.unitframe
@@ -864,6 +860,9 @@ if (States.unitframe) then
     end
 end
 ]], Constants.REACTION_HELP, Constants.REACTION_HARM, Constants.REACTION_NONE);
+
+    -- Update States
+    appendLine("local stateValue")
 
     -- Update Basic States
     local stateArray = {};
