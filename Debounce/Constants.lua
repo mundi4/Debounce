@@ -42,6 +42,9 @@ Constants.UNUSED                          = "unused";
 Constants.COMBINED                        = "_combined";
 
 
+Constants.MAX_NUM_CHECKED_UNITS = 12;
+
+
 Constants.MAX_NUM_CUSTOM_STATES = 5;
 
 Constants.CUSTOM_STATE_INDICES  = {};
