@@ -530,33 +530,28 @@ do
         return description;
     end
 
-    local function CreateTargetUnitSubmenu(parentDescription, label, unit)
-        -- local optionsDescription = parentDescription:CreateRadio(label,
-        --     function()
-        --         return _action.checkedUnit == unit and _action.checkedUnitValue ~= nil;
-        --     end,
-        --     function()
-        --         if (_action.checkedUnit ~= unit) then
-        --             _action.checkedUnit = unit;
-        --             _action.checkedUnitValue = true;
-        --         end
-        --         DebouncePrivate.UpdateBindings();
-        --         return MenuResponse.Refresh;
-        --     end
-        -- );
-        --local optionsDescription = parentDescription:CreateButton(label);
-        local optionsDescription = CreateActionMenuItemGroup(parentDescription, label, "unit", function()
-            return _action.checkedUnit == unit and _action.checkedUnitValue ~= nil;
-        end, nil, nil, true);
+    local function CreateUnitConditionSubmenu(parentDescription, label, unit)
+        local optionsDescription = CreateActionMenuItemGroup(parentDescription, label, nil,
+            function()
+                return _action.checkedUnits and _action.checkedUnits[unit] ~= nil;
+            end,
+            -- error
+            function()
+                return DebouncePrivate.GetBindingIssue(_action, "checkedUnits", nil, unit);
+            end,
+            nil, true);
 
         local titleDescription = optionsDescription:CreateTitle(MenuUtil.GetElementText(optionsDescription));
-        if (unit == true) then
+        if (unit == "@") then
             optionsDescription:AddInitializer(function(button, elementDescription, menu)
                 if (_action.unit and _action.unit ~= "none") then
                     button.fontString:SetText(format(LLL["SELECTED_TARGET_UNIT"], DebounceUI.UNIT_INFO[_action.unit].name));
                 else
                     button.fontString:SetText(LLL["SELECTED_TARGET_UNIT_EMPTY"]);
                 end
+            end);
+            optionsDescription:SetEnabled(function()
+                return _action.unit and _action.unit ~= "none" and true or false;
             end);
 
             titleDescription:AddInitializer(function(button, elementDescription, menu)
@@ -568,13 +563,29 @@ do
             end);
         end
 
-        optionsDescription:CreateRadio(LLL["CONDITION_UNIT_EXISTS"],
+        optionsDescription:CreateRadio(LLL["DISABLE"],
             function()
-                return _action.checkedUnit == unit and _action.checkedUnitValue == true;
+                return not _action.checkedUnits or _action.checkedUnits[unit] == nil;
             end,
             function()
-                _action.checkedUnit = unit;
-                _action.checkedUnitValue = true;
+                if (_action.checkedUnits) then
+                    _action.checkedUnits[unit] = nil;
+                    if (not next(_action.checkedUnits)) then
+                        _action.checkedUnits = nil;
+                    end
+                end
+                onActionValueChanged();
+                return MenuResponse.Refresh;
+            end
+        );
+
+        optionsDescription:CreateRadio(LLL["CONDITION_UNIT_EXISTS"],
+            function()
+                return _action.checkedUnits and _action.checkedUnits[unit] == true;
+            end,
+            function()
+                _action.checkedUnits = _action.checkedUnits or {};
+                _action.checkedUnits[unit] = true;
                 onActionValueChanged();
                 return MenuResponse.Refresh;
             end
@@ -582,11 +593,11 @@ do
 
         optionsDescription:CreateRadio(LLL["CONDITION_UNIT_HELP"],
             function()
-                return _action.checkedUnit == unit and _action.checkedUnitValue == "help";
+                return _action.checkedUnits and _action.checkedUnits[unit] == "help";
             end,
             function()
-                _action.checkedUnit = unit;
-                _action.checkedUnitValue = "help";
+                _action.checkedUnits = _action.checkedUnits or {};
+                _action.checkedUnits[unit] = "help";
                 onActionValueChanged();
                 return MenuResponse.Refresh;
             end
@@ -594,11 +605,11 @@ do
 
         optionsDescription:CreateRadio(LLL["CONDITION_UNIT_HARM"],
             function()
-                return _action.checkedUnit == unit and _action.checkedUnitValue == "harm";
+                return _action.checkedUnits and _action.checkedUnits[unit] == "harm";
             end,
             function()
-                _action.checkedUnit = unit;
-                _action.checkedUnitValue = "harm";
+                _action.checkedUnits = _action.checkedUnits or {};
+                _action.checkedUnits[unit] = "harm";
                 onActionValueChanged();
                 return MenuResponse.Refresh;
             end
@@ -606,11 +617,11 @@ do
 
         optionsDescription:CreateRadio(LLL["CONDITION_UNIT_DOES_NOT_EXIST"],
             function()
-                return _action.checkedUnit == unit and _action.checkedUnitValue == false;
+                return _action.checkedUnits and _action.checkedUnits[unit] == false;
             end,
             function()
-                _action.checkedUnit = unit;
-                _action.checkedUnitValue = false;
+                _action.checkedUnits = _action.checkedUnits or {};
+                _action.checkedUnits[unit] = false;
                 onActionValueChanged();
                 return MenuResponse.Refresh;
             end
@@ -690,6 +701,83 @@ do
             end
         end
 
+        description:CreateDivider();
+        local childDescription;
+
+        childDescription = description:CreateCheckbox(LLL["ONLY_IF_UNIT_EXISTS"],
+            function()
+                return _action.checkedUnits and _action.checkedUnits["@"];
+            end,
+            function()
+                local value = not _action.checkedUnits;
+                if (_action.checkedUnits and _action.checkedUnits["@"]) then
+                    _action.checkedUnits["@"] = nil;
+                    if (not next(_action.checkedUnits)) then
+                        _action.checkedUnits = nil;
+                    end
+                else
+                    _action.checkedUnits = _action.checkedUnits or {};
+                    _action.checkedUnits["@"] = true;
+                end
+                onActionValueChanged();
+                return MenuResponse.Refresh;
+            end
+        );
+        childDescription:SetEnabled(function()
+            return _action.unit and _action.unit ~= "none" and _action.unit ~= "player" and true or false;
+        end);
+
+        local function initializer(frame, elementDescription, menu)
+            frame.leftTexture1:SetPoint("LEFT", 15, 0);
+        end
+
+        local function isEnabled()
+            return _action.unit and _action.unit ~= "none" and _action.unit ~= "player" and _action.checkedUnits and _action.checkedUnits["@"] and true or false;
+        end
+
+
+        childDescription = description:CreateRadio(LLL["REACTION_ALL"],
+            function()
+                return _action.checkedUnits and _action.checkedUnits["@"] == true;
+            end,
+            function()
+                _action.checkedUnits = _action.checkedUnits or {};
+                _action.checkedUnits["@"] = true;
+                onActionValueChanged();
+                return MenuResponse.Refresh;
+            end
+        );
+        childDescription:AddInitializer(initializer);
+        childDescription:SetEnabled(isEnabled);
+
+        childDescription = description:CreateRadio(LLL["REACTION_HELP"],
+            function()
+                return _action.checkedUnits and _action.checkedUnits["@"] == "help";
+            end,
+            function()
+                _action.checkedUnits = _action.checkedUnits or {};
+                _action.checkedUnits["@"] = "help";
+                onActionValueChanged();
+                return MenuResponse.Refresh;
+            end
+        );
+        childDescription:AddInitializer(initializer);
+        childDescription:SetEnabled(isEnabled);
+
+        childDescription = description:CreateRadio(LLL["REACTION_HARM"],
+            function()
+                return _action.checkedUnits and _action.checkedUnits["@"] == "harm";
+            end,
+            function()
+                _action.checkedUnits = _action.checkedUnits or {};
+                _action.checkedUnits["@"] = "harm";
+                onActionValueChanged();
+                return MenuResponse.Refresh;
+            end
+        );
+        childDescription:AddInitializer(initializer);
+        childDescription:SetEnabled(isEnabled);
+
         return description;
     end
 
@@ -737,39 +825,41 @@ do
     end
 
     local function CreateUnitConditionMenu(rootDescription)
-        local description = CreateActionMenuItemGroup(rootDescription, "CONDITION_UNIT", "checkedUnit",
+        local description = CreateActionMenuItemGroup(rootDescription, "CONDITION_UNITS", "checkedUnits",
             -- isActive
             function()
-                if (not _action.checkedUnit or _action.checkedUnitValue == nil) then
-                    return false;
+                if (_action.checkedUnits) then
+                    for k, _ in pairs(_action.checkedUnits) do
+                        if (k ~= "@") then
+                            return true;
+                        end
+                    end
                 end
-                if (_action.checkedUnit == true and (not _action.unit or _action.unit == "none")) then
-                    return false;
-                end
-                return true;
+                return false;
             end
         );
 
-        description:CreateRadio(LLL["DISABLE"],
+        description:CreateRadio(LLL["DISABLE_ALL"],
             function()
-                return _action.checkedUnit == nil or _action.checkedUnitValue == nil;
+                return not _action.checkedUnits;
             end,
             function()
-                _action.checkedUnit = nil;
-                _action.checkedUnitValue = nil;
+                _action.checkedUnits = nil;
                 onActionValueChanged();
                 return MenuResponse.Refresh;
             end
         );
 
-        if (_action.type == Constants.SPELL or _action.type == Constants.ITEM or _action.type == Constants.TARGET or _action.type == Constants.FOCUS or _action.type == Constants.TOGGLEMENU) then
-            CreateTargetUnitSubmenu(description, "SELECTED_TARGET_UNIT_EMPTY", true);
-        end
+        -- if (_action.type == Constants.SPELL or _action.type == Constants.ITEM or _action.type == Constants.TARGET or _action.type == Constants.FOCUS or _action.type == Constants.TOGGLEMENU) then
+        --     CreateUnitConditionSubmenu(description, "SELECTED_TARGET_UNIT_EMPTY", "@");
+        -- end
 
         for _, unit in ipairs(SORTED_UNIT_LIST) do
-            local unitInfo = DebounceUI.UNIT_INFO[unit];
-            if not (unit == "player" or unit == "none") then
-                CreateTargetUnitSubmenu(description, unitInfo.name, unit);
+            if (not (unit == "player" or unit == "none")) then
+                local unitInfo = DebounceUI.UNIT_INFO[unit];
+                if (unitInfo.checkedUnit ~= false) then
+                    CreateUnitConditionSubmenu(description, unitInfo.name, unit);
+                end
             end
         end
     end

@@ -167,7 +167,6 @@ BindingDriver:SetAttribute("ToggleCustomState", [[
 
 BindingDriver:SetAttribute("SetUnit", [[
 	local alias, unit, force = ...
-	print("SetUnit",alias, unit, force)
 	local changed = UnitMap[alias] ~= unit
 	local dirty = false
 	if (changed or force) then
@@ -312,18 +311,18 @@ BindingDriver:SetAttribute("UpdateBindings", (DebouncePrivate.DEBUG and [[
 					match = false
 				end
 
-				if (match) then
-					if (t.checkUnitExists and not UnitStates[t.checkUnitExists]) then
-						match = false
-					end
-					if (t.checkedUnit) then
-						local val = UnitStates[t.checkedUnit]
-						if (t.checkedUnitValue == true and not UnitStates[t.checkedUnit]) then
+				if (match and t.checkedUnits) then
+					for checkedUnit, cond in pairs(t.checkedUnits) do
+						local val = UnitStates[checkedUnit]
+						if (cond == true and not val) then
 							match = false
-						elseif (t.checkedUnitValue == false and UnitStates[t.checkedUnit]) then
+						elseif (cond == false and val) then
 							match = false
-						elseif (t.checkedUnitValue ~= UnitStates[t.checkedUnit]) then
+						elseif (cond ~= val) then
 							match = false
+						end
+						if (not match) then
+							break
 						end
 					end
 				end
