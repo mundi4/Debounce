@@ -78,11 +78,9 @@ do
             binding.pet = action.pet;
             binding.petbattle = action.petbattle;
             binding.unit = action.unit;
-            binding.checkUnitExists = action.checkUnitExists;
             binding.key = action.key;
             binding.priority = action.priority or Constants.DEFAULT_PRIORITY;
-            binding.checkedUnit = action.checkedUnit;
-            binding.checkedUnitValue = action.checkedUnitValue;
+            binding.checkedUnits = action.checkedUnits and CopyTable(action.checkedUnits) or nil;
 
             for stateIndex = 1, Constants.MAX_NUM_CUSTOM_STATES do
                 local state = "$state" .. stateIndex;
@@ -103,15 +101,9 @@ do
                 binding.ignoreHoverUnit = nil;
             end
 
-            if (binding.checkedUnit == nil or binding.checkedUnitValue == nil) then
-                binding.checkedUnit = nil;
-                binding.checkedUnitValue = nil;
-            elseif (binding.checkedUnit == true) then
-                if (binding.unit == nil or binding.unit == "none") then
-                    binding.checkedUnit = nil;
-                    binding.checkedUnitValue = nil;
-                else
-                    binding.checkedUnit = binding.unit;
+            if (binding.checkedUnits) then
+                if (binding.checkedUnits["@"] and (binding.unit == nil or binding.unit == "none" or binding.unit == "player")) then
+                    binding.checkedUnits["@"] = nil;
                 end
             end
 
@@ -133,22 +125,6 @@ do
                     binding.type ~= Constants.FOCUS and
                     binding.type ~= Constants.TOGGLEMENU) then
                 binding.unit = nil;
-            end
-
-            if (binding.checkUnitExists == true) then
-                if (not binding.unit or binding.unit == "" or binding.unit == "none") then
-                    binding.checkUnitExists = nil;
-                end
-            end
-
-            -- 암묵적인 조건들
-            if (binding.checkUnitExists == true) then
-                binding.checkUnitExists = binding.unit;
-            end
-
-            if (binding.hover == nil and binding.checkUnitExists == "hover") then
-                binding.hover = true;
-                binding.ignoreHoverUnit = true;
             end
 
             if (binding.petbattle and binding.specialbar) then
@@ -250,11 +226,7 @@ function DebouncePrivate.IsConditionalBinding(binding)
         return true;
     end
 
-    if (binding.checkUnitExists) then
-        return true;
-    end
-
-    if (binding.checkedUnit) then
+    if (binding.checkedUnits) then
         return true;
     end
 
@@ -289,7 +261,7 @@ local GROUP_ROLE_UNITS = {
     mainassist = Constants.GROUP_RAID,
 };
 
-function DebouncePrivate.GetBindingIssue(action, category, notCategory)
+function DebouncePrivate.GetBindingIssue(action, category, notCategory, arg)
     local issue;
 
     if (not issue and (not category or category == "key") and notCategory ~= "key") then
@@ -328,8 +300,6 @@ function DebouncePrivate.GetBindingIssue(action, category, notCategory)
                 issue = Constants.BINDING_ISSUE_CANNOT_USE_HOVER_WITH_CLIQUE;
             elseif (binding.hover and (binding.reactions == 0 or binding.frameTypes == 0)) then
                 issue = Constants.BINDING_ISSUE_HOVER_NONE_SELECTED;
-                -- elseif (binding.hover == false and (binding.checkedUnit == "hover" and binding.checkedUnitValue)) then
-                --     issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
             end
         end
     end
@@ -356,24 +326,33 @@ function DebouncePrivate.GetBindingIssue(action, category, notCategory)
         end
     end
 
-    if (not issue and (not category or category == "checkedUnit") and notCategory ~= "checkedUnit") then
-        if (binding.hover == false and binding.checkedUnit == "hover" and binding.checkedUnitValue) then
+    if (not issue and binding.checkedUnits and (not category or category == "checkedUnits") and notCategory ~= "checkedUnits") then
+        if (binding.hover == false and binding.checkedUnits["hover"]) then
             issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
-        elseif (binding.hover and binding.checkedUnit == "hover" and binding.checkedUnitValue == false) then
+        elseif (binding.hover and binding.checkedUnits["hover"] == false) then
             issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
-        end
-    end
-
-    if (not issue and (not category or (category == "groups" or category == "unit") and (notCategory ~= "groups" and notCategory ~= "unit"))) then
-        if (binding.groups) then
-            local groupFlags = GROUP_ROLE_UNITS[binding.checkUnitExists];
-            if (groupFlags) then
-                if (band(groupFlags, binding.groups) == 0) then
+        elseif (binding.checkedUnits["@"] ~= nil) then
+            if (arg == nil or arg == "@" or arg == binding.unit) then
+                if (binding.checkedUnits["@"] == false and binding.checkedUnits[binding.unit]) then
+                    issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
+                elseif (binding.checkedUnits["@"] and binding.checkedUnits[binding.unit] == false) then
                     issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
                 end
             end
         end
     end
+
+    -- FIXME
+    -- if (not issue and (not category or (category == "groups" or category == "unit") and (notCategory ~= "groups" and notCategory ~= "unit"))) then
+    --     if (binding.groups) then
+    --         local groupFlags = GROUP_ROLE_UNITS[binding.checkUnitExists];
+    --         if (groupFlags) then
+    --             if (band(groupFlags, binding.groups) == 0) then
+    --                 issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
+    --             end
+    --         end
+    --     end
+    -- end
 
     if (not issue and (not category or category == "specialbar") and notCategory ~= "specialbar") then
         if ((binding.specialbar and binding.petbattle == false) or (binding.petbattle and binding.specialbar == false)) then
@@ -523,47 +502,59 @@ do
         --     end
         -- },
         {
-            name = "basicunit",
+            name = "basicunits",
             make = function(action)
-                local unitIndex = BASIC_UNITS[action.checkedUnit];
-                if (unitIndex) then
-                    local flag;
-                    if (action.checkedUnitValue == true) then
-                        flag = 2 ^ 3 - 1;
-                    elseif (action.checkedUnitValue == "help") then
-                        flag = 2 ^ 1;
-                    elseif (action.checkedUnitValue == "harm") then
-                        flag = 2 ^ 2;
-                    else
-                        flag = 2 ^ 3;
+                if (action.checkedUnits) then
+                    local flags = 0;
+                    for unit, unitIndex in pairs(BASIC_UNITS) do
+                        local flag;
+                        if (action.checkedUnits[unit] ~= nil) then
+                            local value = action.checkedUnits[unit];
+                            if (value == true) then
+                                flag = 2 ^ 3 - 1;
+                            elseif (value == "help") then
+                                flag = 2 ^ 1;
+                            elseif (value == "harm") then
+                                flag = 2 ^ 2;
+                            else
+                                flag = 2 ^ 3;
+                            end
+                            if (unitIndex > 1) then
+                                flag = lshift(flag, (unitIndex - 1) * 4);
+                            end
+                            flags = bor(flags, flag);
+                        end
                     end
-                    if (unitIndex > 1) then
-                        flag = lshift(flag, (unitIndex - 1) * 4);
-                    end
-                    return flag;
+                    return flags;
                 end
                 return 0xffffffff;
             end
         },
         {
-            name = "specialunit",
+            name = "specialunits",
             make = function(action)
-                local unitIndex = SPECIAL_UNITS[action.checkedUnit];
-                if (unitIndex) then
-                    local flag;
-                    if (action.checkedUnitValue == true) then
-                        flag = 2 ^ 3 - 1;
-                    elseif (action.checkedUnitValue == "help") then
-                        flag = 2 ^ 1;
-                    elseif (action.checkedUnitValue == "harm") then
-                        flag = 2 ^ 2;
-                    else
-                        flag = 2 ^ 3;
+                if (action.checkedUnits) then
+                    local flags = 0;
+                    for unit, unitIndex in pairs(SPECIAL_UNITS) do
+                        local flag;
+                        if (action.checkedUnits[unit] ~= nil) then
+                            local value = action.checkedUnits[unit];
+                            if (value == true) then
+                                flag = 2 ^ 3 - 1;
+                            elseif (value == "help") then
+                                flag = 2 ^ 1;
+                            elseif (value == "harm") then
+                                flag = 2 ^ 2;
+                            else
+                                flag = 2 ^ 3;
+                            end
+                            if (unitIndex > 1) then
+                                flag = lshift(flag, (unitIndex - 1) * 4);
+                            end
+                            flags = bor(flags, flag);
+                        end
                     end
-                    if (unitIndex > 1) then
-                        flag = lshift(flag, (unitIndex - 1) * 4);
-                    end
-                    return flag;
+                    return flags;
                 end
                 return 0xffffffff;
             end
@@ -734,11 +725,7 @@ function DebouncePrivate.ConvertToMacroText(action)
 
         if (spellOrItemName) then
             if (action.unit) then
-                if (action.checkUnitExists) then
-                    macrotext = format("%s [@%s,exists] %s", slashCommand, action.unit, spellOrItemName);
-                else
-                    macrotext = format("%s [@%s] %s", slashCommand, action.unit, spellOrItemName);
-                end
+                macrotext = format("%s [@%s] %s", slashCommand, action.unit, spellOrItemName);
             else
                 macrotext = format("%1$s %3$s", slashCommand, action.unit, spellOrItemName);
             end
@@ -1030,9 +1017,6 @@ do
         if (isClick) then
             -- click binding의 경우 @hover를 @mouseover로 대체해도 안전하다.
             if (binding.hover and binding.reactions ~= nil and band(binding.reactions, Constants.REACTION_ALL) ~= Constants.REACTION_ALL) then
-                if (binding.checkUnitExists and binding.checkUnitExists ~= "hover") then
-                    return;
-                end
                 if (binding.reactions == Constants.REACTION_HELP) then
                     _tmp[#_tmp + 1] = "@mouseover,help";
                 elseif (binding.reactions == Constants.REACTION_HARM) then
@@ -1045,15 +1029,9 @@ do
                     _tmp[#_tmp + 1] = "@mouseover";
                     helpOrHarm = true;
                 end
-            elseif (binding.checkUnitExists and binding.checkUnitExists ~= "hover") then
-                _tmp[#_tmp + 1] = format("@%s,exists", binding.checkUnitExists);
             end
         else
             if (binding.hover) then
-                if (binding.checkUnitExists and binding.checkUnitExists ~= "hover") then
-                    return;
-                end
-
                 if (binding.reactions == Constants.REACTION_HELP) then
                     _tmp[#_tmp + 1] = "@hover,help"
                 elseif (binding.reactions == Constants.REACTION_HARM) then
@@ -1067,10 +1045,6 @@ do
                     helpOrHarm = true;
                 else
                     _tmp[#_tmp + 1] = "@hover,exists"
-                end
-            else
-                if (binding.checkUnitExists) then
-                    _tmp[#_tmp + 1] = format("@%s,exists", binding.checkUnitExists);
                 end
             end
         end

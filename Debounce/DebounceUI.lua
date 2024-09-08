@@ -144,6 +144,7 @@ local UNIT_INFO            = {
 	},
 	pet = {
 		name = LLL["UNIT_PET"],
+		checkedUnit = false,
 	},
 	target = {
 		name = LLL["UNIT_TARGET"],
@@ -676,9 +677,6 @@ do
 			local error = hasIssues and GetBindingIssue(action, "unit");
 			local unitStr = UNIT_INFO[action.unit] and UNIT_INFO[action.unit].name or LLL[action.unit];
 			addValueLine(unitStr, error);
-			-- if (action.unit ~= "" and action.unit ~= "none" and action.checkUnitExists) then
-			-- 	addValueLine(LLL["ONLY_WHEN_UNIT_EXISTS_DESC"]);
-			-- end
 		end
 
 		if (action.hover ~= nil) then
@@ -740,33 +738,32 @@ do
 			end
 		end
 
-		if (action.checkedUnit and action.checkedUnitValue ~= nil) then
-			local checkedUnit = action.checkedUnit;
+		if (action.checkedUnits) then
+			local first = true;
+			for checkedUnit, value in pairs(action.checkedUnits) do
+				if (checkedUnit ~= "@" or (action.unit and action.unit ~= "none")) then
+					if (first) then
+						addLabelLine(LLL["CONDITION_UNITS"]);
+						first = false;
+					end
 
-			if (checkedUnit == true and (not action.unit or action.unit == "none")) then
-				if (not action.unit or action.unit == "none") then
-					checkedUnit = nil;
-				end
-			end
-
-			if (checkedUnit) then
-				addLabelLine(LLL["CONDITION_UNIT"]);
-				local error = hasIssues and GetBindingIssue(action, "checkedUnit");
-				local unitStr;
-				if (checkedUnit == true) then
-					unitStr = format(LLL["SELECTED_TARGET_UNIT"], UNIT_INFO[action.unit].name);
-				else
-					unitStr = UNIT_INFO[checkedUnit].name;
-				end
-				--addValueLine(unitStr);
-				if (action.checkedUnitValue == true) then
-					addValueLine(unitStr .. " - " .. LLL["CONDITION_UNIT_EXISTS"], error);
-				elseif (action.checkedUnitValue == "help") then
-					addValueLine(unitStr .. " - " .. LLL["CONDITION_UNIT_HELP"], error);
-				elseif (action.checkedUnitValue == "harm") then
-					addValueLine(unitStr .. " - " .. LLL["CONDITION_UNIT_HARM"], error);
-				else
-					addValueLine(unitStr .. " - " .. LLL["CONDITION_UNIT_DOES_NOT_EXIST"], error);
+					local error = hasIssues and GetBindingIssue(action, "checkedUnits");
+					local unitStr;
+					if (checkedUnit == "@") then
+						unitStr = format(LLL["SELECTED_TARGET_UNIT"], UNIT_INFO[action.unit].name);
+					else
+						unitStr = UNIT_INFO[checkedUnit].name;
+					end
+					--addValueLine(unitStr);
+					if (value == true) then
+						addValueLine(unitStr .. " - " .. LLL["CONDITION_UNIT_EXISTS"], error);
+					elseif (value == "help") then
+						addValueLine(unitStr .. " - " .. LLL["CONDITION_UNIT_HELP"], error);
+					elseif (value == "harm") then
+						addValueLine(unitStr .. " - " .. LLL["CONDITION_UNIT_HARM"], error);
+					else
+						addValueLine(unitStr .. " - " .. LLL["CONDITION_UNIT_DOES_NOT_EXIST"], error);
+					end
 				end
 			end
 		end

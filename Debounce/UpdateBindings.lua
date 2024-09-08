@@ -184,6 +184,20 @@ function addMacrotextBinding(buttonOrStateName, macrotext)
     _macrotextBindings[buttonOrStateName] = addMacrotext(macrotext)
 end
 
+local function formatValue(value)
+    if (value == nil) then
+        return "nil";
+    elseif (value == true) then
+        return "true";
+    elseif (value == false) then
+        return "false";
+    elseif (luatype(value) == "string") then
+        return format("%q", value);
+    else
+        return tostring(value);
+    end
+end
+
 local function appendLine(str, ...)
     if (select("#", ...)) then
         _strArr[#_strArr + 1] = format(str, ...);
@@ -192,8 +206,7 @@ local function appendLine(str, ...)
     end
 end
 
-local function appendKeyValue(key, value, tbl)
-    tbl = tbl or "t";
+local function appendKeyValue(key, value)
     if (value == nil) then
         return;
     elseif (value == true) then
@@ -628,12 +641,17 @@ t.clickAttrs["%1$smacrotext%2$d"]="/click %3$s %4$s %5$s"
                         --     _unitStates[binding.checkUnitExists] = true;
                         -- end
 
-                        if (binding.checkedUnit) then
-                            appendKeyValue("checkedUnit", binding.checkedUnit);
-                            appendKeyValue("checkedUnitValue", binding.checkedUnitValue);
-                            _unitsSeen[binding.checkedUnit] = true;
-                            _unitStates[binding.checkedUnit] = bor(_unitStates[binding.checkedUnit] or 0, UnitStateFlags[binding.checkedUnitValue]);
-                            _updateFlags[binding.checkedUnit .. "-exists"] = true;
+                        if (binding.checkedUnits) then
+                            appendLine("t.checkedUnits=newtable()");
+                            for k, v in pairs(binding.checkedUnits) do
+                                if (k == "@") then
+                                    k = binding.unit;
+                                end
+                                appendLine("t.checkedUnits[%q]=%s", k, formatValue(v));
+                                _unitsSeen[k] = true;
+                                _unitStates[k] = bor(_unitStates[k] or 0, UnitStateFlags[v]);    
+                                _updateFlags[k .. "-exists"] = true;
+                            end
                         end
 
                         local customStatesTblCreated;
@@ -662,7 +680,6 @@ t.clickAttrs["%1$smacrotext%2$d"]="/click %3$s %4$s %5$s"
                                         tblCreated = true;
                                     end
                                     appendLine([[t.customStates[%q]=%s]], state, v and "true" or "false");
-                                    --appendKeyValue("$state" .. stateInfo.index, v);
                                     _updateFlags[state] = true;
                                 end
                             end
