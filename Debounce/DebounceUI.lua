@@ -275,12 +275,19 @@ local function DoesAncestryIncludeMouseFocus(ancestry)
 	end
 end
 
+local function TryCloseAnyDialog()
+	if (DebounceIconSelectorFrame:Close() and DebounceMacroFrame:Close() and DebounceKeybindFrame:Close()) then
+		return true;
+	end
+	return false;
+end
+
 local function IsEditingMacro(elementData)
 	if (DebounceMacroFrame:IsShown() and (elementData == nil or DebounceMacroFrame.elementData == elementData)) then
 		return true;
 	elseif (DebounceIconSelectorFrame:IsShown() and (elementData == nil or DebounceIconSelectorFrame.elementData == elementData)) then
 		return true;
-	else --elseif (DebounceMacroFrame:IsShown() or DebounceIconSelectorFrame:IsShown()) then
+	else
 		return false;
 	end
 end
@@ -1034,7 +1041,7 @@ function DebounceLineMixin:OnClick(buttonName)
 	end
 
 	if (buttonName == "RightButton") then
-		if (DebouncePrivate.DEBUG and IsControlKeyDown()) then
+		if (false and DebouncePrivate.DEBUG and IsControlKeyDown()) then
 			if (IsEditingMacro(elementData)) then
 				return;
 			end
@@ -1050,8 +1057,34 @@ function DebounceLineMixin:OnClick(buttonName)
 				ShowDeleteConfirmationPopup(elementData);
 			end
 		else
-			if (DebounceKeybindFrame:HasChanges()) then
-				DebouncePrivate.DisplayMessage(LLL["CONFIRM_CURRENT_CHANGE_FIRST"]);
+			if (not DebounceKeybindFrame:Close()) then
+				return;
+			end
+
+			if (IsControlKeyDown() and elementData.action.type == "macrotext") then
+				if (IsEditingMacro(elementData)) then
+					-- already editing this item
+					return;
+				end
+
+				if (DebounceMacroFrame:IsShown() and DebounceMacroFrame:HasUnsavedChanges()) then
+					DebouncePrivate.DisplayMessage(LLL["CONFIRM_CURRENT_CHANGE_FIRST"]);
+					return;
+				end
+
+				if (not DebounceIconSelectorFrame:Close()) then
+					return;
+				end
+
+				if (not DebounceMacroFrame:Close()) then
+					return;
+				end
+
+				DebounceMacroFrame:ShowEdit(elementData);
+				return;
+			end
+
+			if (not DebounceIconSelectorFrame:Close()) then
 				return;
 			end
 
@@ -1068,7 +1101,7 @@ function DebounceLineMixin:OnClick(buttonName)
 		return;
 	end
 
-	if (DebounceKeybindFrame:HasChanges()) then
+	if (DebounceKeybindFrame:HasUnsavedChanges()) then
 		DebouncePrivate.DisplayMessage(LLL["CONFIRM_CURRENT_CHANGE_FIRST"]);
 		return;
 	end
@@ -1077,6 +1110,10 @@ function DebounceLineMixin:OnClick(buttonName)
 end
 
 function DebounceLineMixin:OnDragStart()
+	if (not TryCloseAnyDialog()) then
+		return;
+	end
+
 	DebounceFrame:StartDragging(self:GetElementData());
 end
 
@@ -1093,6 +1130,10 @@ function DebounceTabMixin:OnLoad()
 end
 
 function DebounceTabMixin:OnClick()
+	if (not TryCloseAnyDialog()) then
+		return;
+	end
+
 	local id = self:GetID();
 	if (_selectedTab ~= id) then
 		DebounceKeybindFrame:Hide();
@@ -1131,7 +1172,7 @@ end
 DebounceSideTabMixin = {};
 
 function DebounceSideTabMixin:OnClick()
-	if (DebounceKeybindFrame:IsShown() or DebounceIconSelectorFrame:IsShown() or DebounceMacroFrame:IsShown()) then
+	if (not TryCloseAnyDialog()) then
 		return;
 	end
 
@@ -1198,12 +1239,26 @@ function DebouncePortraitMixin:OnLoad()
 		self.TooltipTitle = rawget(LLL, self.TooltipTitle) or _G[self.TooltipTitle] or self.TooltipTitle;
 		self.TooltipText = rawget(LLL, self.TooltipText);
 	end
+	if (self.MenuFunc) then
+		self:SetupMenu(DebounceUI[self.MenuFunc]);
+	end
+end
 
-	-- if (self.DropDown) then
-	-- 	self.HandlesGlobalMouseEvent = function(_, buttonID, event)
-	-- 		return event == "GLOBAL_MOUSE_DOWN" and buttonID == "LeftButton";
-	-- 	end
-	-- end
+function DebouncePortraitMixin:OnMenuOpened(menu)
+	DropdownButtonMixin.OnMenuOpened(self, menu);
+	self:SetSelectedState(true);
+end
+
+function DebouncePortraitMixin:OnMenuClosed(menu)
+	DropdownButtonMixin.OnMenuOpened(self, menu);
+	self:SetSelectedState(false);
+end
+
+function DebouncePortraitMixin:OnShow()
+	if (not self.initialized) then
+		self:OnLoad();
+		self.initialized = true;
+	end
 end
 
 function DebouncePortraitMixin:OnEnter()
@@ -1219,6 +1274,14 @@ end
 
 function DebouncePortraitMixin:OnLeave()
 	GameTooltip:Hide();
+end
+
+function DebouncePortraitMixin:OnEnable()
+	self.Portrait:SetDesaturated(false);
+end
+
+function DebouncePortraitMixin:OnDisable()
+	self.Portrait:SetDesaturated(true);
 end
 
 DebounceFrameMixin = {};
@@ -1445,11 +1508,11 @@ function DebounceFrameMixin:InitializeScrollBox()
 end
 
 function DebounceFrameMixin:InitializeButtons()
-	self.AddButton:SetScript("OnClick", function(button)
-		-- HideDeleteConfirmationPopup();
-		-- ToggleDropDownMenu(1, "root", self.AddDropDown, "cursor", 20, 15);
-		DebounceUI.ToggleDropDownMenu(self.AddDropDown, button);
-	end);
+	-- self.AddButton:SetScript("OnClick", function(button)
+	-- 	-- HideDeleteConfirmationPopup();
+	-- 	-- ToggleDropDownMenu(1, "root", self.AddDropDown, "cursor", 20, 15);
+	-- 	DebounceUI.ToggleDropDownMenu(self.AddDropDown, button);
+	-- end);
 
 	self.OverviewPortrait:SetScript("OnClick", function()
 		DebounceOverviewFrame:Toggle();
@@ -1469,7 +1532,7 @@ function DebounceFrameMixin:OnLoad()
 	PanelTemplates_SetNumTabs(self, #self.Tabs);
 	PanelTemplates_SetTab(self, _selectedTab);
 
-	self.AddButton:SetText(LLL["ADD"]);
+	-- self.AddButton:SetText(LLL["ADD"]);
 
 	-- self.AddDropDown = Create_UIDropDownMenu("DebounceAddDropDown", self);
 	-- self.OptionsDropDown = Create_UIDropDownMenu("DebounceOptionsDropDown", self);
@@ -1534,12 +1597,13 @@ function DebounceFrameMixin:InitDropdownMenus()
 	-- 	-- C_HeirloomInfo.SetDefaultFilters();
 	-- end);
 
-	self.AddButton:SetupMenu(DebounceUI.SetupAddDropdownMenu);
-	self.OptionsPortrait:SetupMenu(DebounceUI.SetupOptionsDropdownMenu);
+	--self.AddButton:SetupMenu(DebounceUI.SetupAddDropdownMenu);
+	--self.AddPortrait:SetupMenu(DebounceUI.SetupAddDropdownMenu);
+	--self.OptionsPortrait:SetupMenu(DebounceUI.SetupOptionsDropdownMenu);
 end
 
 function DebounceFrameMixin:InitCustomStatesDropdown()
-	self.CustomStatesPortrait:SetupMenu(DebounceUI.SetupCustomStatesDropdownMenu);
+	--self.CustomStatesPortrait:SetupMenu(DebounceUI.SetupCustomStatesDropdownMenu);
 	-- self.CustomStatesPortrait:RegisterCallback("OnUpdate", function()
 	-- 	print("OnUpdate")
 	-- end);
@@ -1780,7 +1844,9 @@ function DebounceFrameMixin:UpdateButtons()
 		tab:SetEnabled(enableButtons);
 	end
 
-	self.AddButton:SetEnabled(enableButtons);
+	self.AddPortrait:SetEnabled(enableButtons);
+	self.CustomStatesPortrait:SetEnabled(enableButtons);
+	self.OptionsPortrait:SetEnabled(enableButtons);
 end
 
 function DebounceFrameMixin:SetTab(id)
@@ -1961,13 +2027,18 @@ function DebounceKeybindFrameMixin:OnShow()
 
 	local action = self.elementData.action;
 	self.prevKey = action.key;
-	self.keyAssigned = nil;
+	self.newKey = nil;
+	self.gotInput = nil;
 	self:Update();
 	DebounceFrame:Update();
 end
 
 function DebounceKeybindFrameMixin:OnHide()
-	DebounceFrame:Update();
+	self.elementData = nil;
+	self.prevKey = nil;
+	self.newKey = nil;
+	self.gotInput = nil;
+	--DebounceFrame:Update();
 end
 
 function DebounceKeybindFrameMixin:OnKeyDown(key)
@@ -2051,6 +2122,7 @@ function DebounceKeybindFrameMixin:ProcessInput(input)
 
 	local key = GetConvertedKeyOrButton(input);
 	key = _CreateKeyChordStringUsingMetaKeyState(key);
+	self.gotInput = true;
 	if (self.newKey ~= key) then
 		self.newKey = key;
 		self:Update();
@@ -2059,22 +2131,18 @@ end
 
 function DebounceKeybindFrameMixin:OkayButton_OnClick()
 	self.elementData.action.key = self.newKey;
-	self.newKey = nil;
 	self:Hide();
 	DebouncePrivate.UpdateBindings();
-	--DebounceFrame:Update();
 end
 
 function DebounceKeybindFrameMixin:CancelButton_OnClick()
-	--self.elementData.action.key = self.prevKey;
-	self.newKey = nil;
 	self:Hide();
 	DebounceFrame:Update();
 end
 
 function DebounceKeybindFrameMixin:UnbindButton_OnClick()
-	local action = self.elementData.action;
 	self.newKey = nil;
+	self.gotInput = true;
 	self.NewKeyText:SetFormattedText(LLL["NEW_KEY_TEXT"], LLL["NOT_BOUND"]);
 	self.UnbindButton:SetEnabled(false);
 	DebounceFrame:Update();
@@ -2089,12 +2157,18 @@ function DebounceKeybindFrameMixin:Update()
 	end
 
 	self.PreviousKeyText:SetFormattedText(LLL["PREVIOUS_KEY_TEXT"], self.prevKey and GetBindingText(self.prevKey, false) or LLL["NOT_BOUND"]);
-	if (self.newKey) then
-		self.NewKeyText:SetFormattedText(LLL["NEW_KEY_TEXT"], GetBindingText(self.newKey, false) or LLL["NOT_BOUND"]);
+	if (self.gotInput) then
+		if (self.newKey) then
+			self.NewKeyText:SetFormattedText(LLL["NEW_KEY_TEXT"], GetBindingText(self.newKey, false));
+			self.UnbindButton:SetEnabled(true);
+		else
+			self.NewKeyText:SetText(LLL["NOT_BOUND"]);
+			self.UnbindButton:SetEnabled(false);
+		end
 	else
 		self.NewKeyText:SetText("");
+		self.UnbindButton:SetEnabled(self.elementData.action.key ~= nil);
 	end
-	self.UnbindButton:SetEnabled(self.newKey ~= nil or self.elementData.action.key ~= nil);
 
 	local warningText;
 	local key = self.newKey or self.prevKey;
@@ -2111,10 +2185,21 @@ function DebounceKeybindFrameMixin:Update()
 	self.WarningText:SetText(warningText or "");
 end
 
-function DebounceKeybindFrameMixin:HasChanges()
-	if (self:IsShown() and self.newKey ~= self.prevKey) then
+function DebounceKeybindFrameMixin:HasUnsavedChanges()
+	if (self:IsShown() and self.gotInput and self.newKey ~= self.prevKey) then
 		return true;
 	end
+end
+
+function DebounceKeybindFrameMixin:Close(force)
+	if (self:IsShown()) then
+		if (not force and self:HasUnsavedChanges()) then
+			DebouncePrivate.DisplayMessage(LLL["CONFIRM_CURRENT_CHANGE_FIRST"]);
+			return false;
+		end
+		self:CancelButton_OnClick();
+	end
+	return true;
 end
 
 DebounceIconSelectorFrameMixin = {};
@@ -2218,6 +2303,28 @@ function DebounceIconSelectorFrameMixin:OkayButton_OnClick()
 	DebounceFrame:Update();
 	DebounceMacroFrame:ShowEdit(elementData);
 	IconSelectorPopupFrameTemplateMixin.OkayButton_OnClick(self);
+end
+
+function DebounceIconSelectorFrameMixin:HasUnsavedChanges()
+	if (self:IsShown() and self.mode == IconSelectorPopupFrameModes.Edit) then
+		local newName = string.gsub(self.BorderBox.IconSelectorEditBox:GetText(), "\"", "");
+		local newIcon = self.BorderBox.SelectedIconArea.SelectedIconButton:GetIconTexture();
+		if (self.elementData.action.name ~= newName or self.elementData.action.icon ~= newIcon) then
+			return true;
+		end
+	end
+	return false;
+end
+
+function DebounceIconSelectorFrameMixin:Close(force)
+	if (self:IsShown()) then
+		if (not force and self:HasUnsavedChanges()) then
+			DebouncePrivate.DisplayMessage(LLL["CONFIRM_CURRENT_CHANGE_FIRST"]);
+			return false;
+		end
+		self:CancelButton_OnClick();
+	end
+	return true;
 end
 
 DebounceMacroFrameMixin = {}
@@ -2332,6 +2439,17 @@ end
 function DebounceMacroFrameMixin:HasUnsavedChanges()
 	local text = self.BorderBox.ScrollFrame.EditBox:GetText();
 	return text ~= self.orginalText;
+end
+
+function DebounceMacroFrameMixin:Close(force)
+	if (self:IsShown()) then
+		if (not force and self:HasUnsavedChanges()) then
+			DebouncePrivate.DisplayMessage(LLL["CONFIRM_CURRENT_CHANGE_FIRST"]);
+			return false;
+		end
+		self:CancelButton_OnClick();
+	end
+	return true;
 end
 
 DebounceOverviewFrameMixin = {}

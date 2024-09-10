@@ -287,8 +287,6 @@ end
 -- OptionsDropDown
 --------------------------------------------------------------------------------
 function DebounceUI.SetupOptionsDropdownMenu(dropdown, rootDescription)
-    --GenerateMenu(dropdown, rootDescription, rootMenu);
-
     do
         local unitframeDescription = rootDescription:CreateButton(LLL["UNITFRAME_OPTIONS"]);
         if (DebouncePrivate.CliqueDetected) then
@@ -654,6 +652,7 @@ do
         end
     end
 
+    -- .." (CTRL-|A:NPE_RightClick:16:16|a)"
     local function EditMacroTextMenuItem(parentDescription)
         if (_action.type == Constants.MACROTEXT) then
             parentDescription:CreateButton(LLL["EDIT_MACRO"], function()

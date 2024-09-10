@@ -592,7 +592,6 @@ local function AddCustomTargetMenus(owner, rootDescription, contextData)
     if (InCombatLockdown()) then
         return;
     end
-
     if (not contextData.unit) then
         return;
     end
