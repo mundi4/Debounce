@@ -1057,26 +1057,13 @@ function DebounceLineMixin:OnClick(buttonName)
 				ShowDeleteConfirmationPopup(elementData);
 			end
 		else
-			if (not DebounceKeybindFrame:Close()) then
-				return;
-			end
-
 			if (IsControlKeyDown() and elementData.action.type == "macrotext") then
 				if (IsEditingMacro(elementData)) then
 					-- already editing this item
 					return;
 				end
 
-				if (DebounceMacroFrame:IsShown() and DebounceMacroFrame:HasUnsavedChanges()) then
-					DebouncePrivate.DisplayMessage(LLL["CONFIRM_CURRENT_CHANGE_FIRST"]);
-					return;
-				end
-
-				if (not DebounceIconSelectorFrame:Close()) then
-					return;
-				end
-
-				if (not DebounceMacroFrame:Close()) then
+				if (not TryCloseAnyDialog()) then
 					return;
 				end
 
@@ -1084,7 +1071,7 @@ function DebounceLineMixin:OnClick(buttonName)
 				return;
 			end
 
-			if (not DebounceIconSelectorFrame:Close()) then
+			if (not TryCloseAnyDialog()) then
 				return;
 			end
 

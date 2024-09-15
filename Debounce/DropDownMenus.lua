@@ -416,13 +416,13 @@ do
 
     local function _hasBit(data)
         local targetObj = data.targetObj or _action;
-        local current = targetObj[data.key] or 0;
+        local current = targetObj[data.key] or data.defaultValue or 0;
         return bit.band(current, data.value) == data.value;
     end
 
     local function _toggleBit(data)
         local targetObj = data.targetObj or _action;
-        local current = targetObj[data.key] or 0;
+        local current = targetObj[data.key] or data.defaultValue or 0;
         targetObj[data.key] = bit.bxor(current, data.value);
         onActionValueChanged();
         return MenuResponse.Refresh;
@@ -445,7 +445,7 @@ do
         return disable, yes, no;
     end
 
-    local function AppendCheckboxes(parentDescription, key, items, callback)
+    local function AppendCheckboxes(parentDescription, key, items, callback, defaultValue)
         for _, item in ipairs(items) do
             local isSelected, setSelected = item.isSelected, item.setSelected;
             if (isSelected == nil) then
@@ -454,7 +454,7 @@ do
             if (setSelected == nil) then
                 setSelected = _toggleBit;
             end
-            local description = parentDescription:CreateCheckbox(item.text, isSelected, setSelected, { key = key, value = item.value });
+            local description = parentDescription:CreateCheckbox(item.text, isSelected, setSelected, { key = key, value = item.value, defaultValue = defaultValue });
             if (callback) then
                 callback(description, item);
             end
@@ -791,31 +791,44 @@ do
             no:SetEnabled(false);
         end
 
+
         description:CreateDivider();
         description:CreateTitle(LLL["CONDITION_REACTIONS"]);
 
         AppendCheckboxes(description, "reactions", {
-            { text = LLL["REACTION_HELP"],  value = Constants["REACTION_HELP"] },
-            { text = LLL["REACTION_HARM"],  value = Constants["REACTION_HARM"] },
-            { text = LLL["REACTION_OTHER"], value = Constants["REACTION_OTHER"] },
-        }, function(elementDescription)
-            elementDescription:SetEnabled(hoverConditionIsOn);
-        end);
+                { text = LLL["REACTION_HELP"],  value = Constants["REACTION_HELP"] },
+                { text = LLL["REACTION_HARM"],  value = Constants["REACTION_HARM"] },
+                { text = LLL["REACTION_OTHER"], value = Constants["REACTION_OTHER"] },
+            }, function(elementDescription)
+                elementDescription:SetEnabled(hoverConditionIsOn);
+            end,
+            (Constants["REACTION_HELP"]
+                + Constants["REACTION_HARM"]
+                + Constants["REACTION_OTHER"])
+        );
 
         description:CreateDivider();
         description:CreateTitle(LLL["CONDITION_FRAMETYPES"]);
 
         AppendCheckboxes(description, "frameTypes", {
-            { text = LLL["FRAMETYPE_PLAYER"],  value = Constants["FRAMETYPE_PLAYER"] },
-            { text = LLL["FRAMETYPE_PET"],     value = Constants["FRAMETYPE_PET"] },
-            { text = LLL["FRAMETYPE_GROUP"],   value = Constants["FRAMETYPE_GROUP"] },
-            { text = LLL["FRAMETYPE_TARGET"],  value = Constants["FRAMETYPE_TARGET"] },
-            { text = LLL["FRAMETYPE_BOSS"],    value = Constants["FRAMETYPE_BOSS"] },
-            { text = LLL["FRAMETYPE_ARENA"],   value = Constants["FRAMETYPE_ARENA"] },
-            { text = LLL["FRAMETYPE_UNKNOWN"], value = Constants["FRAMETYPE_UNKNOWN"] },
-        }, function(elementDescription)
-            elementDescription:SetEnabled(hoverConditionIsOn);
-        end);
+                { text = LLL["FRAMETYPE_PLAYER"],  value = Constants["FRAMETYPE_PLAYER"] },
+                { text = LLL["FRAMETYPE_PET"],     value = Constants["FRAMETYPE_PET"] },
+                { text = LLL["FRAMETYPE_GROUP"],   value = Constants["FRAMETYPE_GROUP"] },
+                { text = LLL["FRAMETYPE_TARGET"],  value = Constants["FRAMETYPE_TARGET"] },
+                { text = LLL["FRAMETYPE_BOSS"],    value = Constants["FRAMETYPE_BOSS"] },
+                { text = LLL["FRAMETYPE_ARENA"],   value = Constants["FRAMETYPE_ARENA"] },
+                { text = LLL["FRAMETYPE_UNKNOWN"], value = Constants["FRAMETYPE_UNKNOWN"] },
+            }, function(elementDescription)
+                elementDescription:SetEnabled(hoverConditionIsOn);
+            end,
+            (Constants["FRAMETYPE_PLAYER"]
+                + Constants["FRAMETYPE_PET"]
+                + Constants["FRAMETYPE_GROUP"]
+                + Constants["FRAMETYPE_TARGET"]
+                + Constants["FRAMETYPE_BOSS"]
+                + Constants["FRAMETYPE_ARENA"]
+                + Constants["FRAMETYPE_UNKNOWN"])
+        );
 
         description:CreateDivider();
         local ignoreHoverUnit = description:CreateCheckbox(LLL["IGNORE_HOVER_UNIT"], actionValueEquals, setActionValue, { key = "ignoreHoverUnit", value = USE_CHECKED_VALUE });
