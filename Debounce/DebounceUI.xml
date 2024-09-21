@@ -219,6 +219,13 @@
 					</Anchors>
 				</Texture>
 			</Layer>
+			<Layer level="OVERLAY">
+				<FontString name="$parentCount" inherits="NumberFontNormalSmall" parentKey="Count" justifyH="RIGHT" text="12">
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT" x="0" y="1"/>
+					</Anchors>
+				</FontString>
+			</Layer>
 		</Layers>
 		<NormalTexture/>
 		<HighlightTexture file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD"/>
@@ -345,12 +352,12 @@
 				</Anchors>
 			</EventFrame>
 
-			<!-- <DropdownButton parentKey="AddButton" inherits="WowStyle1FilterDropdownTemplate">
-				<Size x="90" y="23"/>
+			<EditBox parentKey="SearchBox" inherits="SearchBoxTemplate" letters="40" hidden="false">
+				<Size x="120" y="30"/>
 				<Anchors>
-					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBoxBackground" relativePoint="TOPLEFT" x="2" y="0"/>
+					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBox" relativePoint="TOPLEFT" x="4" y="2"/>
 				</Anchors>
-			</DropdownButton> -->
+			</EditBox>
 
 			<Button parentKey="Tab1" inherits="DebounceFrameTabTemplate" text="GENERAL" id="1">
 				<Anchors>
@@ -810,6 +817,7 @@
 		<Scripts>
 			<OnEnter method="OnEnter"/>
 			<OnLeave method="OnLeave"/>
+			<OnClick method="OnClick"/>
 		</Scripts>
 	</Button>
 

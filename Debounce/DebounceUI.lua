@@ -1,24 +1,18 @@
-﻿-- TODO
--- SomethingDropDrop_Initialize 함수들이 너무 크다.
--- 1. 다른 파일로 분리하고
--- 2. 기능/메뉴 별로 함수들을 쪼개기
---   예: SomeMenu_Initialize(level, menuList)...
+﻿local _, DebouncePrivate     = ...;
+DebouncePrivate.DebounceUI   = {};
 
-local _, DebouncePrivate    = ...;
-DebouncePrivate.DebounceUI  = {};
+local NUM_SPECS              = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
+local Constants              = DebouncePrivate.Constants;
+local LLL                    = DebouncePrivate.L;
+local DebounceUI             = DebouncePrivate.DebounceUI;
 
-local NUM_SPECS             = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
-local Constants             = DebouncePrivate.Constants;
-local LLL                   = DebouncePrivate.L;
-local DebounceUI            = DebouncePrivate.DebounceUI;
-
-local MACRO_NAME_CHAR_LIMIT = 32;
-local MACRO_CHAR_LIMIT      = 1000;
-local DISABLED_FONT_COLOR   = _G.DISABLED_FONT_COLOR;
-local ERROR_COLOR           = _G.ERROR_COLOR;
-local WARNING_FONT_COLOR    = CreateColor(1, 0.5, 0, 1);
-local INACTIVE_COLOR        = _G.INACTIVE_COLOR;
-
+local MACRO_NAME_CHAR_LIMIT  = 32;
+local MACRO_CHAR_LIMIT       = 1000;
+local DISABLED_FONT_COLOR    = _G.DISABLED_FONT_COLOR;
+local ERROR_COLOR            = _G.ERROR_COLOR;
+local WARNING_FONT_COLOR     = CreateColor(1, 0.5, 0, 1);
+local INACTIVE_COLOR         = _G.INACTIVE_COLOR;
+local FILTERED_ALPHA         = 0.3;
 
 local luatype                = type;
 local dump                   = DebouncePrivate.dump;
@@ -206,6 +200,75 @@ local UNIT_INFO            = {
 	},
 };
 
+local _keyInfoCache        = {};
+local _mods                = {
+	LALT = true,
+	RALT = true,
+	ALT = true,
+	LCTRL = true,
+	RCTRL = true,
+	CTRL = true,
+	LSHIFT = true,
+	RSHIFT = true,
+	SHIFT = true,
+	META = true,
+}
+local function _GetKeyInfo(key)
+	if (_keyInfoCache[key]) then
+		return _keyInfoCache[key];
+	end
+	local sa = { strsplit("-", key) };
+	local keyInfo = {};
+	keyInfo.key = key;
+	if (#sa > 0 and not _mods[sa[#sa]]) then
+		keyInfo.lastKey = GetConvertedKeyOrButton(tremove(sa, #sa));
+	end
+	keyInfo.mods = sa;
+
+	_keyInfoCache[key] = keyInfo;
+	return keyInfo;
+end
+
+local function _CreateKeyChordStringUsingMetaKeyState(key, useLeftRight)
+	local chord = {};
+	-- 순서: ALT-CTRL-SHIFT
+
+	if useLeftRight and IsLeftAltKeyDown() then
+		table.insert(chord, "LALT");
+	elseif useLeftRight and IsRightAltKeyDown() then
+		table.insert(chord, "RALT");
+	elseif IsAltKeyDown() then
+		table.insert(chord, "ALT");
+	end
+
+	if useLeftRight and IsLeftControlKeyDown() then
+		table.insert(chord, "LCTRL");
+	elseif useLeftRight and IsRightControlKeyDown() then
+		table.insert(chord, "RCTRL");
+	elseif IsControlKeyDown() then
+		table.insert(chord, "CTRL");
+	end
+
+	if useLeftRight and IsLeftShiftKeyDown() then
+		table.insert(chord, "LSHIFT");
+	elseif useLeftRight and IsRightShiftKeyDown() then
+		table.insert(chord, "RSHIFT");
+	elseif IsShiftKeyDown() then
+		table.insert(chord, "SHIFT");
+	end
+
+	if IsMetaKeyDown() then
+		table.insert(chord, "META");
+	end
+
+	if not IsMetaKey(key) then
+		table.insert(chord, key);
+	end
+
+	local preventSort = true;
+	return CreateKeyChordStringFromTable(chord, preventSort);
+end
+
 local GetActionBarTypeLabel;
 do
 	local _bonusbarLabels;
@@ -343,10 +406,19 @@ local function GetActionTypeAndValueFromCursorInfo()
 end
 
 local function NameAndIconFromElementData(elementData)
-	local action = elementData.action;
-	local type = action.type;
-	local value = action.value;
+	local action;
+	local type;
+	local value;
 	local skipTypeName;
+	if (elementData.action) then
+		action = elementData.action;
+		type = action.type;
+		value = action.value;
+	else
+		action = elementData;
+		type = action.type;
+		value = action.value;
+	end
 
 	local actionName, actionIcon;
 	if (type == Constants.SPELL) then
@@ -900,6 +972,69 @@ do
 	end
 end
 
+local function DoesActionMatchFilter(action)
+	if (not DebounceFrame.SearchBox.filterText) then
+		return true;
+	end
+
+	local filters = DebounceFrame.SearchBox.filters;
+	if (not filters or #filters == 0) then
+		return true;
+	end
+
+	local name, icon = NameAndIconFromElementData(action);
+	for _, filterText in ipairs(filters) do
+		local match;
+		if (name and strfind(name:lower(), filterText, 1, true)) then
+			match = true;
+		end
+
+		if (not match) then
+			if (strfind(action.type:lower(), filterText, 1, true)) then
+				match = true;
+			end
+		end
+
+		if (not match) then
+			if (action.type == Constants.MACROTEXT) then
+				if (action.value and strfind(action.value:lower(), filterText, 1, true)) then
+					match = true;
+				end
+			end
+		end
+
+		if (not match) then
+			if (filterText:sub(1, 1) == "@") then
+				local unit = filterText:sub(2);
+				if (action.unit and strfind(action.unit, unit, 1, true)) then
+					match = true;
+				elseif (action.checkedUnits) then
+					for checkedUnit, _ in pairs(action.checkedUnits) do
+						if (strfind(checkedUnit, unit, 1, true)) then
+							match = true;
+						end
+					end
+				end
+			end
+		end
+
+		if (not match) then
+			if (action.key) then
+				local keyText = GetBindingText(action.key);
+				if (strfind(keyText:lower(), filterText, 1, true)) then
+					match = true;
+				end
+			end
+		end
+
+		if (not match) then
+			return false;
+		end
+	end
+
+	return true;
+end
+
 
 DebounceLineMixin = {};
 
@@ -1003,6 +1138,8 @@ function DebounceLineMixin:Update()
 
 	if (elementData == _placeholder or IsEditingMacro(elementData) or IsEditDropdownShown(elementData) or IsKeybindFrameShown(elementData)) then
 		self.SelectedHighlight:Show();
+	elseif (DebounceOverviewFrame:IsShown() and DebounceOverviewFrame.hoveredAction == action) then
+		self.SelectedHighlight:Show();
 	elseif (IsEditingMacro() or IsEditDropdownShown() or IsKeybindFrameShown()) then
 		self.SelectedHighlight:Hide();
 	else
@@ -1016,6 +1153,12 @@ function DebounceLineMixin:Update()
 
 	if (GameTooltip:GetOwner() == self) then
 		self:OnEnter();
+	end
+
+	if (DoesActionMatchFilter(action)) then
+		self:SetAlpha(1);
+	else
+		self:SetAlpha(FILTERED_ALPHA);
 	end
 end
 
@@ -1304,8 +1447,6 @@ function DebounceFrameMixin:InitializeSideTabs()
 		tab.tooltip = name;
 		tab:Show();
 	end
-
-	self.ScrollBox.EmptyText:SetText(LLL["NO_ACTIONS_IN_THIS_TAB"]);
 end
 
 function DebounceFrameMixin:UpdateSideTabs()
@@ -1349,6 +1490,63 @@ function DebounceFrameMixin:UpdateSideTabs()
 	end
 end
 
+function DebounceFrameMixin:UpdateEmptyText()
+	if (self.dataProvider:GetSize() == 0) then
+		-- if (self.SearchBox.filters) then
+		-- 	self.ScrollBox.EmptyText:SetText(LLL["NO_ACTIONS_MATCHING_FILTER"]);
+		-- else
+		-- 	self.ScrollBox.EmptyText:SetText(LLL["NO_ACTIONS_IN_THIS_TAB"]);
+		-- end
+		self.ScrollBox.EmptyText:SetText(LLL["NO_ACTIONS_IN_THIS_TAB"]);
+		self.ScrollBox.EmptyText:Show();
+	else
+		self.ScrollBox.EmptyText:Hide();
+	end
+end
+
+function DebounceFrameMixin:UpdateActionCounts()
+	for tabId, tab in ipairs(self.Tabs) do
+		local sum = 0;
+
+		for sideTabId, sideTab in ipairs(self.SideTabs) do
+			if (sideTab:IsShown()) then
+				local layerId = GetLayerID(tabId, sideTabId);
+				local layer = DebouncePrivate.GetProfileLayer(layerId);
+				local count;
+				if (self.SearchBox.filters) then
+					count = 0;
+					for i, action in layer:Enumerate() do
+						if (DoesActionMatchFilter(action)) then
+							count = count + 1;
+						end
+					end
+				else
+					count = layer:GetNumActions();
+				end
+				if (tabId == _selectedTab) then
+					sideTab.Count:SetText(count);
+					if (count > 0 and self.SearchBox.filters) then
+						sideTab.Count:SetTextColor(GREEN_FONT_COLOR:GetRGB());
+					else
+						sideTab.Count:SetTextColor(1, 1, 1);
+					end
+				end
+				sum = sum + count;
+			end
+		end
+
+		local label;
+		if (sum > 0 and self.SearchBox.filters) then
+			label = GetTabLabel(tabId) .. " |cnGREEN_FONT_COLOR:(" .. sum .. ")|r";
+		else
+			label = GetTabLabel(tabId) .. " (" .. sum .. ")";
+		end
+
+		tab:SetText(label);
+		PanelTemplates_TabResize(tab, 0)
+	end
+end
+
 function DebounceFrameMixin:GetPlaceholder()
 	return _placeholder;
 end
@@ -1374,6 +1572,7 @@ do
 						if (frameElementData == _placeholder) then
 							return;
 						end
+
 						if (frameElementData ~= _placeholder) then
 							if (_placeholder.sortIndex < frameElementData.index) then
 								pos = frameElementData.index + 0.5;
@@ -1495,12 +1694,6 @@ function DebounceFrameMixin:InitializeScrollBox()
 end
 
 function DebounceFrameMixin:InitializeButtons()
-	-- self.AddButton:SetScript("OnClick", function(button)
-	-- 	-- HideDeleteConfirmationPopup();
-	-- 	-- ToggleDropDownMenu(1, "root", self.AddDropDown, "cursor", 20, 15);
-	-- 	DebounceUI.ToggleDropDownMenu(self.AddDropDown, button);
-	-- end);
-
 	self.OverviewPortrait:SetScript("OnClick", function()
 		DebounceOverviewFrame:Toggle();
 	end)
@@ -1519,33 +1712,6 @@ function DebounceFrameMixin:OnLoad()
 	PanelTemplates_SetNumTabs(self, #self.Tabs);
 	PanelTemplates_SetTab(self, _selectedTab);
 
-	-- self.AddButton:SetText(LLL["ADD"]);
-
-	-- self.AddDropDown = Create_UIDropDownMenu("DebounceAddDropDown", self);
-	-- self.OptionsDropDown = Create_UIDropDownMenu("DebounceOptionsDropDown", self);
-	-- self.EditDropDown = Create_UIDropDownMenu("DebounceEditDropDown", self);
-	-- self.CustomStatesDropDown = Create_UIDropDownMenu("DebounceCustomStatesDropDown", self);
-	-- self.OptionsDropDown = Create_UIDropDownMenu("DebounceOptionsDropDown", self);
-
-	-- self.OptionsDropDown.listFrameOnShow = function()
-	-- 	if (L_UIDROPDOWNMENU_MENU_LEVEL == 1) then
-	-- 		self.OptionsPortrait:SetSelectedState(true);
-	-- 		-- self.OptionsPortrait.Portrait:SetVertexColor(1, 1, 0);
-	-- 	end
-	-- end
-	-- self.OptionsDropDown.onHide = function(id)
-	-- 	if (id == 2) then
-	-- 		self.OptionsPortrait:SetSelectedState(false);
-	-- 		-- self.OptionsPortrait.Portrait:SetVertexColor(1, 1, 1);
-	-- 	end
-	-- end
-
-	self:InitDropdownMenus();
-	self:InitCustomStatesDropdown();
-	--UIDropDownMenu_Initialize(self.AddDropDown, DebounceUI.AddDropDown_Initialize, "MENU");
-	--UIDropDownMenu_Initialize(self.OptionsDropDown, DebounceUI.OptionsDropDown_Initialize, "MENU");
-	--UIDropDownMenu_Initialize(self.CustomStatesDropDown, DebounceUI.CustomStatesDropDown_Initialize, "MENU");
-
 	self:InitializeScrollBox();
 	self:InitializeSideTabs();
 	self:InitializeButtons();
@@ -1561,6 +1727,9 @@ function DebounceFrameMixin:OnLoad()
 		DebouncePrivate.db.global.ui.pos = { x = x, y = y };
 	end);
 
+	self.keyFilter = "";
+	self.SearchBox:SetScript("OnTextChanged", self.SearchBox_OnTextChanged);
+
 	DebouncePrivate.db.global.ui = DebouncePrivate.db.global.ui or {};
 	self:ClearAllPoints();
 	local pos = DebouncePrivate.db.global.ui.pos;
@@ -1569,37 +1738,6 @@ function DebounceFrameMixin:OnLoad()
 	else
 		self:SetPoint("CENTER", "UIParent", 0, 0);
 	end
-end
-
-function DebounceFrameMixin:InitDropdownMenus()
-	-- self.AddButton:SetUpdateCallback(function()
-	-- 	-- self:FullRefreshIfVisible();
-	-- end);
-
-	-- self.AddButton:SetIsDefaultCallback(function()
-	-- 	-- return C_HeirloomInfo.IsUsingDefaultFilters();
-	-- end);
-
-	-- self.AddButton:SetDefaultCallback(function()
-	-- 	-- C_HeirloomInfo.SetDefaultFilters();
-	-- end);
-
-	--self.AddButton:SetupMenu(DebounceUI.SetupAddDropdownMenu);
-	--self.AddPortrait:SetupMenu(DebounceUI.SetupAddDropdownMenu);
-	--self.OptionsPortrait:SetupMenu(DebounceUI.SetupOptionsDropdownMenu);
-end
-
-function DebounceFrameMixin:InitCustomStatesDropdown()
-	--self.CustomStatesPortrait:SetupMenu(DebounceUI.SetupCustomStatesDropdownMenu);
-	-- self.CustomStatesPortrait:RegisterCallback("OnUpdate", function()
-	-- 	print("OnUpdate")
-	-- end);
-	-- self.CustomStatesPortrait:RegisterCallback("OnMenuOpen", function()
-	-- 	print("OnMenuOpen")
-	-- end);
-	-- self.CustomStatesPortrait:RegisterCallback("OnMenuClose", function()
-	-- 	print("OnMenuClose")
-	-- end);
 end
 
 function DebounceFrameMixin:OnShow()
@@ -1624,6 +1762,7 @@ end
 
 function DebounceFrameMixin:OnHide()
 	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE);
+	self.SearchBox:SetText("");
 
 	HideSaveOrDiscardPopup();
 	HideDeleteConfirmationPopup();
@@ -1771,7 +1910,8 @@ function DebounceFrameMixin:Refresh(retainScrollPosition)
 
 	local title = format(LLL["DEBOUNCE_TITLE_FORMAT"], GetTabLabel(_selectedTab), GetSideTabaLabel(_selectedSideTab));
 	self:SetTitle(title);
-	self.ScrollBox.EmptyText:SetShown(self.dataProvider:GetSize() == 0);
+	self:UpdateActionCounts();
+	self:UpdateEmptyText();
 end
 
 function DebounceFrameMixin:FindElementDataByActionInfo(action)
@@ -1816,7 +1956,8 @@ function DebounceFrameMixin:Update()
 		button:Update();
 	end);
 
-	self.ScrollBox.EmptyText:SetShown(self.dataProvider:GetSize() == 0);
+	self:UpdateEmptyText();
+
 	self.ScrollBoxBackground.Highlight:SetShown(_pickedupInfo or _draggingElement)
 end
 
@@ -1834,6 +1975,7 @@ function DebounceFrameMixin:UpdateButtons()
 	self.AddPortrait:SetEnabled(enableButtons);
 	self.CustomStatesPortrait:SetEnabled(enableButtons);
 	self.OptionsPortrait:SetEnabled(enableButtons);
+	self.SearchBox:SetEnabled(enableButtons);
 end
 
 function DebounceFrameMixin:SetTab(id)
@@ -1991,6 +2133,35 @@ function DebounceFrameMixin:RefreshIconDataProvider()
 	return self.iconDataProvider;
 end
 
+function DebounceFrameMixin:SearchBox_OnTextChanged(userInput)
+	InputBoxInstructions_OnTextChanged(self);
+
+	local filterText = string.match(self:GetText(), "^%s*(.-)%s*$"):lower();
+	if (filterText == "") then
+		filterText = nil;
+	end
+
+	if (self.filterText ~= filterText) then
+		self.filterText = filterText;
+
+		if (filterText) then
+			local words = {}
+			for word in string.gmatch(filterText, "%S+") do
+				table.insert(words, word)
+			end
+			self.filters = words;
+		else
+			self.filters = nil;
+		end
+		DebounceFrame:Refresh();
+	end
+end
+
+function DebounceFrameMixin:SearchBoxClearButton_OnClick()
+	DebounceFrame.keyFilter = "";
+	SearchBoxTemplateClearButton_OnClick(self);
+end
+
 DebounceKeybindFrameMixin = {};
 
 function DebounceKeybindFrameMixin:OnLoad()
@@ -2060,46 +2231,6 @@ end
 
 function DebounceKeybindFrameMixin:OnGamePadButtonDown(key)
 	self:ProcessInput(key);
-end
-
-local function _CreateKeyChordStringUsingMetaKeyState(key, useLeftRight)
-	local chord = {};
-	-- 순서: ALT-CTRL-SHIFT
-
-	if useLeftRight and IsLeftAltKeyDown() then
-		table.insert(chord, "LALT");
-	elseif useLeftRight and IsRightAltKeyDown() then
-		table.insert(chord, "RALT");
-	elseif IsAltKeyDown() then
-		table.insert(chord, "ALT");
-	end
-
-	if useLeftRight and IsLeftControlKeyDown() then
-		table.insert(chord, "LCTRL");
-	elseif useLeftRight and IsRightControlKeyDown() then
-		table.insert(chord, "RCTRL");
-	elseif IsControlKeyDown() then
-		table.insert(chord, "CTRL");
-	end
-
-	if useLeftRight and IsLeftShiftKeyDown() then
-		table.insert(chord, "LSHIFT");
-	elseif useLeftRight and IsRightShiftKeyDown() then
-		table.insert(chord, "RSHIFT");
-	elseif IsShiftKeyDown() then
-		table.insert(chord, "SHIFT");
-	end
-
-	if IsMetaKeyDown() then
-		table.insert(chord, "META");
-	end
-
-	if not IsMetaKey(key) then
-		table.insert(chord, key);
-	end
-
-	local preventSort = true;
-	return CreateKeyChordStringFromTable(chord, preventSort);
 end
 
 function DebounceKeybindFrameMixin:ProcessInput(input)
@@ -2518,11 +2649,56 @@ end
 
 function DebounceOverviewLineMixin:OnEnter()
 	ShowLineTooltip(self, "ANCHOR_CURSOR_RIGHT", self:GetElementData(), true);
+	if (DebounceOverviewFrame.hoveredAction ~= self:GetElementData().action) then
+		DebounceOverviewFrame.hoveredAction = self:GetElementData().action;
+		DebounceFrame:Update();
+	end
 end
 
 function DebounceOverviewLineMixin:OnLeave()
+	if (DebounceOverviewFrame.hoveredAction ~= nil) then
+		DebounceOverviewFrame.hoveredAction = nil;
+		DebounceFrame:Update();
+	end
 	GameTooltip:SetMinimumWidth(0, false);
 	GameTooltip:Hide();
+end
+
+function DebounceOverviewLineMixin:OnClick()
+	if (InCombatLockdown()) then
+		return;
+	end
+
+	local matchedLayer;
+	local elementData = self:GetElementData();
+	for _, layer in DebouncePrivate.EnumerateProfileLayers() do
+		for _, action in layer:Enumerate() do
+			if (action == elementData.action) then
+				matchedLayer = layer;
+				break;
+			end
+		end
+	end
+
+	if (matchedLayer) then
+		DebounceFrame:Show();
+		if (matchedLayer.isCharacterSpecific) then
+			DebounceFrame:SetTab(2);
+		else
+			DebounceFrame:SetTab(1);
+		end
+		if (matchedLayer.spec) then
+			DebounceFrame.SideTabs[matchedLayer.spec + 2]:Click();
+		else
+			DebounceFrame.SideTabs[1]:Click();
+		end
+
+		local index, elementDataFound = DebounceFrame.dataProvider:FindByPredicate(function(elementData2)
+			return elementData2.action == elementData.action;
+		end)
+
+		DebounceFrame.ScrollBox:ScrollToNearest(index);
+	end
 end
 
 function DebounceOverviewLineMixin:Update()
@@ -2778,36 +2954,3 @@ DebounceUI.MoveAction = MoveAction;
 DebounceUI.ShowDeleteConfirmationPopup = ShowDeleteConfirmationPopup;
 DebounceUI.NameAndIconFromElementData = NameAndIconFromElementData;
 DebounceUI.ShowInputBox = ShowInputBox
-
-function DebounceUI.ToggleDropDownMenu(dropdown, button)
-	-- HideDeleteConfirmationPopup();
-	-- local w, h = button:GetSize();
-	-- ToggleDropDownMenu(1, "root", dropdown, button, w + 5, h + 5);
-end
-
--- local temp = {
--- 	[[#showtooltip
--- /cast Regrowth]],
-
--- 	[[#showtooltip [@target,noexists]Regrowth;Hearthstone
--- /use [@target,noexists]Regrowth;Hearthstone]],
-
--- 	[[/use [@target,noexists]Regrowth;Hearthstone]],
-
--- 	[[#showtooltip [@target,exists]Regrowth;Hearthstone
--- /use [@target,exists]Regrowth;Hearthstone]],
-
--- 	[[/use [@target,exists]Regrowth;Hearthstone]],
-
--- 	[[/use [@custom1,exists]Regrowth;Hearthstone]],
-
--- 	[[/use [@custom1,noexists]Regrowth;Hearthstone]],
--- }
-
--- for index, value in ipairs(temp) do
--- 	--dump("temp" .. index, { value, { SecureCmdOptionParse(value) } })
--- 	print("###" .. index)
--- 	local icon = GetMacrotextIcon(value)
--- 	print(icon)
--- 	print("---###")
--- end

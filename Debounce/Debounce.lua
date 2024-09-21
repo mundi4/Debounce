@@ -18,11 +18,11 @@ local band, bor, bnot                    = bit.band, bit.bor, bit.bnot;
 local InCombatLockdown                   = InCombatLockdown;
 local GetSpellNameAndIconID              = DebouncePrivate.GetSpellNameAndIconID;
 
-local GetSpellSubtext     = C_Spell.GetSpellSubtext;
-local GetMountInfoByID    = C_MountJournal.GetMountInfoByID;
-local IsConditionalAction = DebouncePrivate.IsConditionalAction;
+local GetSpellSubtext                    = C_Spell.GetSpellSubtext;
+local GetMountInfoByID                   = C_MountJournal.GetMountInfoByID;
+local IsConditionalAction                = DebouncePrivate.IsConditionalAction;
 
-local BindingDriver       = CreateFrame("Frame", DEBUG and "DebounceBindingDriver" or nil, nil, "SecureHandlerBaseTemplate,SecureHandlerAttributeTemplate");
+local BindingDriver                      = CreateFrame("Frame", DEBUG and "DebounceBindingDriver" or nil, nil, "SecureHandlerBaseTemplate,SecureHandlerAttributeTemplate");
 BindingDriver:SetAttribute("unit", "player");
 RegisterUnitWatch(BindingDriver, true);
 SecureHandlerExecute(BindingDriver, [[

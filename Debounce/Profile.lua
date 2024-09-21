@@ -146,14 +146,11 @@ local function MigrateLayer(layerTbl, dbver)
                 if (next(action.checkedUnits) == nil) then
                     action.checkedUnits = nil;
                 end
-                
             end
         end
         dbver = 2;
     end
-
 end
-
 
 local function MigrateDB(db, isCharacterSpecific)
     if (db.dbver == 1) then
@@ -203,7 +200,7 @@ local function LoadLayer(layerID)
         tbl = tbl[layerInfo.spec];
     end
 
-    local layer = setmetatable({ layerID = layerID, actions = tbl, }, { __index = ProfileLayerProto });
+    local layer = setmetatable({ layerID = layerID, spec = layerInfo.spec, isCharacterSpecific = layerInfo.isCharacterSpecific, actions = tbl, }, { __index = ProfileLayerProto });
     return layer;
 end
 
@@ -378,4 +375,8 @@ function DebouncePrivate.EnumerateActionsInActiveLayers()
     end
 
     return Enumerator, layerIdArray, 0;
+end
+
+function DebouncePrivate.FindLayerID(action)
+    
 end
