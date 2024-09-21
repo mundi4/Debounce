@@ -45,7 +45,7 @@ Conditions that activate key bindings:
 - **Hover**: Activates the key binding based on the unit frame your mouse is currently over.
 - **Combat**: Activates the key binding depending on whether you are in combat.
 - **Shapeshift**: Activates the key binding based on your current shapeshift form, if applicable.
-- **Unit**: Activates the key binding based on specific units or unit roles, such as `@tank` or `@healer`.
+- **Unit**: Activates the key binding when specific units or roles are present.
 - **Group**: Activates the key binding depending on whether you are in a group or raid.
 - **Custom States**: Activates the key binding based on custom states you have set, which can be toggled on or off.
 - **...**: Additional conditions can also be specified as needed.

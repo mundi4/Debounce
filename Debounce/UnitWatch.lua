@@ -605,10 +605,19 @@ local function AddCustomTargetMenus(owner, rootDescription, contextData)
                 if (not InCombatLockdown()) then
                     DebouncePrivate.UnitWatch:SetAttribute("custom" .. i, unit);
                 end
+                return MenuResponse.Close;
             end);
             desc:SetEnabled(function()
                 return not InCombatLockdown();
             end);
+
+            desc:CreateButton(LLL["CUSTOM_TARGET_CLEAR"], function(...)
+                if (not InCombatLockdown()) then
+                    DebouncePrivate.UnitWatch:SetAttribute("custom" .. i, nil);
+                end
+                return MenuResponse.Close;
+            end);
+
             -- desc:AddInitializer(function(button, elementDescription, menu)
             --     local current = DebouncePrivate.Units["custom" .. i];
             --     if (current and UnitIsUnit(unit, current)) then

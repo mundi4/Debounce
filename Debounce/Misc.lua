@@ -105,6 +105,17 @@ do
                 if (binding.checkedUnits["@"] and (binding.unit == nil or binding.unit == "none" or binding.unit == "player")) then
                     binding.checkedUnits["@"] = nil;
                 end
+
+                if (binding.checkedUnits["@"] ~= nil and binding.checkedUnits[binding.unit] ~= nil) then
+                    if (binding.checkedUnits["@"] == binding.checkedUnits[binding.unit]) then
+                        binding.checkedUnits["@"] = nil;
+                    elseif (binding.checkedUnits["@"] == true and binding.checkedUnits[binding.unit]) then
+                        binding.checkedUnits["@"] = nil;
+                    elseif (binding.checkedUnits["@"] and binding.checkedUnits[binding.unit] == true) then
+                        binding.checkedUnits[binding.unit] = binding.checkedUnits["@"];
+                        binding.checkedUnits["@"] = nil;
+                    end
+                end
             end
 
             if (binding.groups and band(binding.groups, Constants.GROUP_ALL) == Constants.GROUP_ALL) then
@@ -333,9 +344,7 @@ function DebouncePrivate.GetBindingIssue(action, category, notCategory, arg)
             issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
         elseif (binding.checkedUnits["@"] ~= nil) then
             if (arg == nil or arg == "@" or arg == binding.unit) then
-                if (binding.checkedUnits["@"] == false and binding.checkedUnits[binding.unit]) then
-                    issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
-                elseif (binding.checkedUnits["@"] and binding.checkedUnits[binding.unit] == false) then
+                if (binding.checkedUnits["@"] ~= binding.checkedUnits[binding.unit]) then
                     issue = Constants.BINDING_ISSUE_CONDITIONS_NEVER;
                 end
             end

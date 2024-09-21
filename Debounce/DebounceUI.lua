@@ -966,6 +966,9 @@ do
 			GameTooltip_AddInstructionLine(GameTooltip, LLL["LINE_TOOLTIP_INSTRUCTION_MESSAGE1"]);
 			GameTooltip_AddInstructionLine(GameTooltip, LLL["LINE_TOOLTIP_INSTRUCTION_MESSAGE2"]);
 			GameTooltip_AddInstructionLine(GameTooltip, LLL["LINE_TOOLTIP_INSTRUCTION_MESSAGE3"]);
+		else
+			GameTooltip_AddBlankLineToTooltip(GameTooltip);
+			GameTooltip_AddInstructionLine(GameTooltip, LLL["OVERVIEW_LINE_TOOLTIP_INSTRUCTION_MESSAGE1"]);
 		end
 
 		GameTooltip:Show();
@@ -1589,11 +1592,11 @@ do
 				end
 			end
 
-			-- pos = pos - 0.5;
 			if (not _placeholder.sortIndex or _placeholder.sortIndex ~= pos) then
 				_placeholder.sortIndex = pos;
 				self.dataProvider:Sort();
 
+				-- i dont remember what these are for, but they seem to be working fine, so i'll leave them for now
 				local dataIndex = self.ScrollBox:FindIndex(_placeholder);
 				local elementExtent = self.ScrollBox:GetElementExtent(dataIndex);
 				local elementOffset = self.ScrollBox:GetExtentUntil(dataIndex);
@@ -1602,10 +1605,10 @@ do
 
 				local offsetInView = elementOffset - scrollOffset;
 				if (offsetInView + elementExtent + ELEMENT_PADDING > visibleExtent) then
-					self.ScrollBox:ScrollToOffset(elementOffset, elementExtent + ELEMENT_PADDING, ScrollBoxConstants.AlignEnd);
+					self.ScrollBox:ScrollToElementData(_placeholder, ScrollBoxConstants.AlignEnd, -ELEMENT_PADDING, true);
 					_lastScrollTime = GetTime();
 				elseif (offsetInView < ELEMENT_PADDING) then
-					self.ScrollBox:ScrollToOffset(elementOffset - ELEMENT_PADDING, 0, 0);
+					self.ScrollBox:ScrollToElementData(_placeholder, ScrollBoxConstants.AlignBegin, ELEMENT_PADDING, true);
 					_lastScrollTime = GetTime();
 				end
 			end
@@ -1675,7 +1678,7 @@ end
 
 function DebounceFrameMixin:InitializeScrollBox()
 	local padding = 7;
-	local bottomPadding = 53;
+	local bottomPadding = 40;
 	local spacing = 4;
 	local view = CreateScrollBoxListLinearView(padding, bottomPadding, padding, padding, spacing);
 
@@ -1729,6 +1732,7 @@ function DebounceFrameMixin:OnLoad()
 
 	self.keyFilter = "";
 	self.SearchBox:SetScript("OnTextChanged", self.SearchBox_OnTextChanged);
+	self.SearchBox:SetScript("OnEditFocusLost", self.SearchBox_OnFocusLost);
 
 	DebouncePrivate.db.global.ui = DebouncePrivate.db.global.ui or {};
 	self:ClearAllPoints();
@@ -2154,6 +2158,15 @@ function DebounceFrameMixin:SearchBox_OnTextChanged(userInput)
 			self.filters = nil;
 		end
 		DebounceFrame:Refresh();
+	end
+end
+
+function DebounceFrameMixin:SearchBox_OnFocusLost()
+	SearchBoxTemplate_OnEditFocusLost(self);
+	local rawText = self:GetText();
+	local trimmedText = string.match(rawText, "^%s*(.-)%s*$"):lower();
+	if (rawText ~= trimmedText) then
+		self:SetText(trimmedText);
 	end
 end
 
