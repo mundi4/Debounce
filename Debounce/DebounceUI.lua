@@ -325,17 +325,13 @@ local function GetSideTabaLabel(sideTabID)
 end
 
 local function DoesAncestryIncludeMouseFocus(ancestry)
-	if (GetMouseFocus) then
-		return DoesAncestryInclude(ancestry, GetMouseFocus())
-	else
-		local mouseFoci = GetMouseFoci();
-		for _, mouseFocus in ipairs(mouseFoci) do
-			if (DoesAncestryInclude(ancestry, mouseFocus)) then -- and (mouseFocus:GetObjectType() ~= "Button")
-				return true;
-			end
+	local mouseFoci = GetMouseFoci();
+	for _, mouseFocus in ipairs(mouseFoci) do
+		if (DoesAncestryInclude(ancestry, mouseFocus)) then -- and (mouseFocus:GetObjectType() ~= "Button")
+			return true;
 		end
-		return false;
 	end
+	return false;
 end
 
 local function TryCloseAnyDialog()
@@ -391,6 +387,7 @@ local function GetActionTypeAndValueFromCursorInfo()
 		if (cursorType == "spell") then
 			type, value = Constants.SPELL, cursorInfo3;
 		elseif (cursorType == "macro") then
+			---@diagnostic disable-next-line: param-type-mismatch
 			local macroName = GetMacroInfo(cursorInfo1);
 			type, value = Constants.MACRO, macroName;
 		elseif (cursorType == "item") then
@@ -723,6 +720,7 @@ do
 
 	function ShowLineTooltip(owner, anchor, elementData, isOverview)
 		GameTooltip:SetOwner(owner, anchor or "ANCHOR_RIGHT");
+		---@diagnostic disable-next-line: redundant-parameter
 		GameTooltip:SetMinimumWidth(140, true);
 
 		action = elementData.action;
@@ -1170,6 +1168,7 @@ function DebounceLineMixin:OnEnter()
 end
 
 function DebounceLineMixin:OnLeave()
+	---@diagnostic disable-next-line: redundant-parameter
 	GameTooltip:SetMinimumWidth(0, false);
 	GameTooltip:Hide();
 end
@@ -2287,10 +2286,10 @@ function DebounceKeybindFrameMixin:Update()
 		self.ActionNameText:SetText(format("|T%2$s:16|t |cffffd200%1$s|r", name, icon));
 	end
 
-	self.PreviousKeyText:SetFormattedText(LLL["PREVIOUS_KEY_TEXT"], self.prevKey and GetBindingText(self.prevKey, false) or LLL["NOT_BOUND"]);
+	self.PreviousKeyText:SetFormattedText(LLL["PREVIOUS_KEY_TEXT"], self.prevKey and GetBindingText(self.prevKey) or LLL["NOT_BOUND"]);
 	if (self.gotInput) then
 		if (self.newKey) then
-			self.NewKeyText:SetFormattedText(LLL["NEW_KEY_TEXT"], GetBindingText(self.newKey, false));
+			self.NewKeyText:SetFormattedText(LLL["NEW_KEY_TEXT"], GetBindingText(self.newKey));
 			self.UnbindButton:SetEnabled(true);
 		else
 			self.NewKeyText:SetText(LLL["NOT_BOUND"]);
@@ -2673,6 +2672,7 @@ function DebounceOverviewLineMixin:OnLeave()
 		DebounceOverviewFrame.hoveredAction = nil;
 		DebounceFrame:Update();
 	end
+	---@diagnostic disable-next-line: redundant-parameter
 	GameTooltip:SetMinimumWidth(0, false);
 	GameTooltip:Hide();
 end
@@ -2718,7 +2718,7 @@ function DebounceOverviewLineMixin:Update()
 	local elementData = self:GetElementData();
 	local action = elementData.action;
 
-	local name, icon = ColoredNameAndIconFromElementData(elementData, true);
+	local name, icon = ColoredNameAndIconFromElementData(elementData);
 
 	self.Name:SetText(name);
 	if (luatype(icon) == "string" and icon:sub(1, 2) == "A:") then
@@ -2741,7 +2741,7 @@ function DebounceOverviewLineMixin:Update()
 		self.ProfessionQualityOverlay:Hide();
 	end
 
-	local bindingText = GetBindingText(action.key, false);
+	local bindingText = GetBindingText(action.key);
 	self.BindingText:SetText(bindingText or "");
 
 	if (action.unit) then

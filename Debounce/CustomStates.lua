@@ -1,3 +1,5 @@
+---@diagnostic disable: redundant-parameter
+
 -- TODO
 -- CustomStates에 관련된 것들은 되도록 이쪽으로 분리할 것.
 local _, DebouncePrivate                 = ...;
