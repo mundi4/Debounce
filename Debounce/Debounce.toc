@@ -3,6 +3,8 @@
 ## Title: Debounce
 ## Version: @project-version@
 ## Author: mundi4
+## Contributors:
+##   ZamestoTV – Russian localization (ruRU)
 ## IconTexture: 133015
 ## SavedVariables: DebounceVars
 ## SavedVariablesPerCharacter: DebounceVarsPerChar

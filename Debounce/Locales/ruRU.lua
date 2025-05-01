@@ -1,7 +1,7 @@
 -- Первод ZamestoTV
 local _, addon = ...;
-addon.L = setmetatable({}, { __index = function(_, key) return key end });
 local L = addon.L;
+if (GetLocale() ~= "ruRU") then return end
 
 L["_HAS_TOOLTIP_SUFFIX"] = " |cffffff00(*)|r"
 L["_MESSAGE_PREFIX"] = "|cff3b9de3[Debounce]|r "
