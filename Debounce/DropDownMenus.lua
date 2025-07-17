@@ -886,6 +886,25 @@ do
         });
     end
 
+    local function CreateIsKnownConditionMenu(rootDescription)
+        local description = CreateActionMenuItemGroup(rootDescription, "CONDITION_IS_KNOWN", "known");
+        description:CreateCheckbox(
+            LLL["IS_KNOWN"],
+            function ()
+                return _action.known == true;
+            end,
+            function ()
+                if _action.known then
+                    _action.known = nil;
+                else
+                    _action.known = true;
+                end
+                onActionValueChanged();
+                return MenuResponse.Refresh;
+            end
+        )
+    end
+
     local function CreateCombatConditionMenu(rootDescription)
         local description = CreateActionMenuItemGroup(rootDescription, "CONDITION_COMBAT", "combat");
         AppendDisableYesNo(description, "CONDITION_COMBAT", "combat");
@@ -1099,6 +1118,8 @@ do
         CreateUnitConditionMenu(rootDescription);
 
         CreateGroupConditionMenu(rootDescription);
+
+        CreateIsKnownConditionMenu(rootDescription);
 
         CreateCombatConditionMenu(rootDescription);
 

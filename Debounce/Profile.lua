@@ -17,6 +17,7 @@ local KEYS_TO_SAVE       = {
     reactions = true,
     frameTypes = true,
     groups = true,
+    known = true,
     combat = true,
     stealth = true,
     forms = true,

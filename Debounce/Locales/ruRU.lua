@@ -230,3 +230,7 @@ L["UNITFRAME_TRIGGER_ON_MOUSE_DOWN_DESC"] = "Запускать действие
 L["UNITFRAME_TRIGGER_ON_MOUSE_DOWN"] = "Использовать нажатие мыши для клик-кастинга"
 L["UNNAMED_ACTION"] = "(Без названия)"
 L["WARNING_MESSAGE_CLIQUE_DETECTED"] = "Поскольку вы используете Clique, некоторые функции этого аддона не будут работать."
+L["CONDITION_IS_KNOWN"] = "Известно"
+L["CONDITION_KNOWN_YES"] = "Известно"
+L["CONDITION_KNOWN_UNKNOWN"] = "Неизвестно"
+L["IS_KNOWN"] = "Известно"
