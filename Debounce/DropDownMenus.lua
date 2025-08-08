@@ -887,9 +887,12 @@ do
     end
 
     local function CreateIsKnownConditionMenu(rootDescription)
-        local description = CreateActionMenuItemGroup(rootDescription, "CONDITION_IS_KNOWN", "known");
+        if (_action.type ~= Constants.SPELL) then
+            return;
+        end
+        local description = CreateActionMenuItemGroup(rootDescription, "CONDITION_KNOWN", "known");
         description:CreateCheckbox(
-            LLL["IS_KNOWN"],
+            LLL["CONDITION_KNOWN_YES"],
             function ()
                 return _action.known == true;
             end,

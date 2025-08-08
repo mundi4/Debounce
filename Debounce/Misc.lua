@@ -109,6 +109,10 @@ do
                 binding.ignoreHoverUnit = nil;
             end
 
+            if (binding.known and binding.type ~= Constants.SPELL) then
+                binding.known = nil;
+            end
+
             if (binding.checkedUnits) then
                 if (binding.checkedUnits["@"] and (binding.unit == nil or binding.unit == "none" or binding.unit == "player")) then
                     binding.checkedUnits["@"] = nil;
@@ -396,6 +400,8 @@ do
     local _currentConditionsList = { {}, n = 0 };
     local _conditionsMap = {};
     local _tempFlags = {};
+    local _spellFlagsMap = {};
+    local _nextSpellFlags = 1;
 
     local function copyConditions(src, dest, overrideCol, overrideVal)
         for i = 1, #src do
@@ -495,12 +501,6 @@ do
             name = "stealth",
             make = function(action)
                 return boolToConditionFlags(action.stealth);
-            end
-        },
-        {
-            name = "known",
-            make = function(action)
-                return boolToConditionFlags(action.known);
             end
         },
         {
@@ -604,6 +604,22 @@ do
                 return ret;
             end
         },
+        {
+            name = "known",
+            make = function(action)
+                if (action.known and action.type == Constants.SPELL) then
+                    if (_spellFlagsMap[action.value]) then
+                        return _spellFlagsMap[action.value];
+                    else
+                        local flags = _nextSpellFlags;
+                        _nextSpellFlags = lshift(_nextSpellFlags, 1);
+                        _spellFlagsMap[action.value] = flags;
+                        return flags;
+                    end
+                end
+                return 0;
+            end
+        }
     };
 
     local function buildConditionSet(action)
@@ -690,6 +706,8 @@ do
             end
         end
         wipe(_conditionsMap);
+        wipe(_spellFlagsMap);
+        _nextSpellFlags = 1;
     end
 
     function DebouncePrivate.IsUnreachableAction(action)

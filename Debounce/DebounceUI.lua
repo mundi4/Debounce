@@ -875,14 +875,14 @@ do
 			addValueLine(action.stealth == true and LLL["CONDITION_STEALTH_YES"] or LLL["CONDITION_STEALTH_NO"], error);
 		end
 
-		if (action.known ~= nil) then
+		if (action.known) then
 			local error = hasIssues and GetBindingIssue(action, "known");
 			addLabelLine(LLL["CONDITION_KNOWN"]);
-			if (action.known == true) then
-				addValueLine(LLL["CONDITION_KNOWN_YES"], error);
-			else
-				addValueLine(LLL["CONDITION_KNOWN_UNKNOWN"], error);
-			end
+			addValueLine(LLL["CONDITION_KNOWN_YES"], error);
+			-- if (action.known == true) then
+			-- else
+			-- 	addValueLine(LLL["CONDITION_KNOWN_UNKNOWN"], error);
+			-- end
 		end
 
 		if (action.forms ~= nil) then

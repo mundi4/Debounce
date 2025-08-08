@@ -312,7 +312,7 @@ BindingDriver:SetAttribute("UpdateBindings", (DebouncePrivate.DEBUG and [[
 				end
 				
 				if (match and t.known ~= nil) then
-					if not SecureCmdOptionParse("[known:" .. t.spellName .. "]") then
+					if (States[t.known] ~= true) then
 						match = false
 					end
 				end
