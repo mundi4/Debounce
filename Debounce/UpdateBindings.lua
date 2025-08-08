@@ -604,6 +604,12 @@ t.clickAttrs["%1$smacrotext%2$d"]="/click %3$s %4$s %5$s"
                             _updateFlags.stealth = true;
                         end
 
+                        if (binding.known ~= nil) then
+                            appendKeyValue("known", binding.known);
+                            appendKeyValue("spellName", binding.spellName or "");
+                            _updateFlags.known = true;
+                        end
+
                         if (binding.forms ~= nil and binding.forms ~= Constants.FORM_ALL) then
                             appendKeyValue("forms", binding.forms);
                             _updateFlags.form = true;
@@ -900,7 +906,7 @@ end
                 appendLine("stateValue=%s", STATE_EVAL_EXPRESSIONS[state]);
             end
             appendLine("if (States[%1$q] ~= stateValue) then States[%1$q]=stateValue;DirtyFlags[%1$q]=true; end", state);
-        elseif (state == "unitframe" or state == "reaction" or state == "frameType") then
+        elseif (state == "unitframe" or state == "reaction" or state == "frameType" or state == "known") then
             -- ignore these states
         elseif (_customStates[state]) then
             -- handle later

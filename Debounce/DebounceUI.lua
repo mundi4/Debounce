@@ -875,6 +875,16 @@ do
 			addValueLine(action.stealth == true and LLL["CONDITION_STEALTH_YES"] or LLL["CONDITION_STEALTH_NO"], error);
 		end
 
+		if (action.known ~= nil) then
+			local error = hasIssues and GetBindingIssue(action, "known");
+			addLabelLine(LLL["CONDITION_KNOWN"]);
+			if (action.known == true) then
+				addValueLine(LLL["CONDITION_KNOWN_YES"], error);
+			else
+				addValueLine(LLL["CONDITION_KNOWN_UNKNOWN"], error);
+			end
+		end
+
 		if (action.forms ~= nil) then
 			addLabelLine(LLL["CONDITION_SHAPESHIFT"]);
 			if (action.forms == 0) then
@@ -1108,6 +1118,7 @@ function DebounceLineMixin:Update()
 				or GetBindingIssue(action, "bonusbars")
 				or GetBindingIssue(action, "specialbar")
 				or GetBindingIssue(action, "combat")
+				or GetBindingIssue(action, "known")
 				or GetBindingIssue(action, "stealth")
 				or GetBindingIssue(action, "pet")
 				or GetBindingIssue(action, "petbattle"))

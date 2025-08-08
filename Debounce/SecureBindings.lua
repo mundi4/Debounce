@@ -310,6 +310,12 @@ BindingDriver:SetAttribute("UpdateBindings", (DebouncePrivate.DEBUG and [[
 				) then
 					match = false
 				end
+				
+				if (match and t.known ~= nil) then
+					if not SecureCmdOptionParse("[known:" .. t.spellName .. "]") then
+						match = false
+					end
+				end
 
 				if (match and t.checkedUnits) then
 					for checkedUnit, cond in pairs(t.checkedUnits) do

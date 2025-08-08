@@ -71,6 +71,7 @@ do
             binding.groups = action.groups;
             binding.combat = action.combat;
             binding.stealth = action.stealth;
+            binding.known = action.known;
             binding.forms = action.forms;
             binding.bonusbars = action.bonusbars;
             binding.specialbar = action.specialbar;
@@ -81,6 +82,13 @@ do
             binding.key = action.key;
             binding.priority = action.priority or Constants.DEFAULT_PRIORITY;
             binding.checkedUnits = action.checkedUnits and CopyTable(action.checkedUnits) or nil;
+
+            if action.type == Constants.SPELL and action.value then
+                local spellInfo = C_Spell.GetSpellInfo(action.value)
+                if spellInfo and spellInfo.name then
+                    binding.spellName = spellInfo.name
+                end
+            end
 
             for stateIndex = 1, Constants.MAX_NUM_CUSTOM_STATES do
                 local state = "$state" .. stateIndex;
@@ -226,6 +234,10 @@ function DebouncePrivate.IsConditionalBinding(binding)
     end
 
     if (binding.stealth ~= nil) then
+        return true;
+    end
+
+    if (binding.known ~= nil) then
         return true;
     end
 
@@ -483,6 +495,12 @@ do
             name = "stealth",
             make = function(action)
                 return boolToConditionFlags(action.stealth);
+            end
+        },
+        {
+            name = "known",
+            make = function(action)
+                return boolToConditionFlags(action.known);
             end
         },
         {
@@ -1084,6 +1102,12 @@ do
                 _tmp[#_tmp + 1] = "stealth";
             else
                 _tmp[#_tmp + 1] = "nostealth";
+            end
+        end
+
+        if (binding.known ~= nil) then
+            if (binding.known == true) then
+                _tmp[#_tmp + 1] = "known:" .. binding.spellName;
             end
         end
 
