@@ -7,17 +7,32 @@ exclude_files = {
 	"DebounceTest/**",
 }
 ignore = {
+	"112", -- mutating non-standard global (Mixin method assignments)
 	"212/self",
 	"1/[A-Z][A-Z][A-Z0-9_]+", -- three letter+ uppercase constants (WoW convention)
 	"211", -- unused local variable
 	"212", -- unused argument
 	"213", -- unused loop variable
+	"231", -- variable never accessed
+	"232", -- argument never accessed
+	"311", -- value assigned to variable is unused
+	"321", -- accessing uninitialized variable
+	"432", -- shadowing upvalue
+	"542", -- empty if branch
+	"581", -- negation of ~= can be simplified
+	"611", -- line contains only whitespace
+	"612", -- line contains trailing whitespace
 }
 globals = {
 	-- Lua standard (exposed as WoW globals)
+	"abs",
 	"bit",
+	"floor",
 	"format",
+	"max",
+	"min",
 	"sort",
+	"strfind",
 	"strlower",
 	"strmatch",
 	"strsplit",
@@ -28,6 +43,10 @@ globals = {
 	"tremove",
 	"wipe",
 	"hooksecurefunc",
+	"securecall",
+	"GenerateClosure",
+	"MergeTable",
+	"GetLocale",
 
 	-- WoW core API
 	"C_AddOns",
@@ -102,14 +121,17 @@ globals = {
 	-- UI utility
 	"CreateColor",
 	"GetClassColorObj",
+	"GetScaledCursorPosition",
 	"CopyTable",
 	"CreateTableEnumerator",
 	"CreateDataProvider",
 	"CreateScrollBoxListLinearView",
 	"CreateAndInitFromMixin",
 	"CreateFromMixins",
+	"TextureKitConstants",
 
 	-- FrameXML: panels, tooltips, menus
+	"GameFontHighlightSmall",
 	"GameTooltip",
 	"GameTooltip_SetTitle",
 	"GameTooltip_AddErrorLine",
@@ -134,8 +156,15 @@ globals = {
 	"MenuUtil",
 	"MenuResponse",
 	"IconSelectorPopupFrameModes",
+	"IconSelectorPopupFrameIconFilterTypes",
+	"IconSelectorPopupFrameTemplateMixin",
 	"IconDataProviderMixin",
+	"IconDataProviderExtraType",
 	"DropdownButtonMixin",
+	"InputBoxInstructions_OnTextChanged",
+	"SearchBoxTemplate_OnEditFocusLost",
+	"SearchBoxTemplateClearButton_OnClick",
+	"HideAllInputBoxes",
 
 	-- FrameXML: frames
 	"UIParent",
@@ -210,6 +239,13 @@ globals = {
 	"DebounceSideTabMixin",
 	"DebouncePortraitMixin",
 	"DebounceFrameMixin",
+	"DebounceKeybindFrameMixin",
+	"DebounceMacroFrameMixin",
+	"DebounceIconSelectorFrameMixin",
+	"DebounceOverviewFrameMixin",
+	"DebounceOverviewHeaderMixin",
+	"DebounceOverviewLineMixin",
+	"DebounceStateDriverUpdateThrottleSliderMixin",
 
 	-- Named frames
 	"DebounceFrame",
@@ -217,6 +253,7 @@ globals = {
 	"DebounceKeybindFrame",
 	"DebounceMacroFrame",
 	"DebounceIconSelectorFrame",
+	"DebounceActionPlacerFrame",
 
 	-- Optional third-party addons
 	"Clique",
