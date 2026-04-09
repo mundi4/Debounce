@@ -120,7 +120,7 @@ function Events.UPDATE_BINDINGS()
 end
 
 function Events.ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
-    local spec = GetSpecialization();
+    local spec = C_SpecializationInfo.GetSpecialization();
     if (not spec) then
         C_Timer.After(0.05, function()
             Events.ACTIVE_PLAYER_SPECIALIZATION_CHANGED();

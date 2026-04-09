@@ -752,7 +752,7 @@ function DebouncePrivate.ConvertToMacroText(action)
         local slashCommand, spellOrItemName;
         if (action.type == Constants.SPELL) then
             slashCommand = SLASH_CAST1;
-            local spellID = FindBaseSpellByID(action.value) or action.value;
+            local spellID = C_SpellBook.FindBaseSpellByID(action.value) or action.value;
             spellOrItemName, icon = GetSpellNameAndIconID(spellID);
             if (spellOrItemName) then
                 local subSpellName = GetSpellSubtext(spellID);

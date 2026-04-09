@@ -1,5 +1,5 @@
 local _, DebouncePrivate = ...;
-local NUM_SPECS          = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
+local NUM_SPECS          = C_SpecializationInfo.GetNumSpecializationsForClassID(select(3, UnitClass("player")));
 
 local Constants          = DebouncePrivate.Constants;
 local luatype            = type;
@@ -162,7 +162,8 @@ local function MigrateDB(db, isCharacterSpecific)
         else
             MigrateLayer(db["GENERAL"], db.dbver);
             for classId = 1, 20 do
-                local _, class = GetClassInfo(classId);
+                local classInfo = C_CreatureInfo.GetClassInfo(classId);
+                local class = classInfo and classInfo.classFile;
                 local classTbl = class and db[class];
                 if (classTbl) then
                     for spec = 0, 5 do
@@ -310,7 +311,7 @@ function DebouncePrivate.GetLayerID(spec, isCharacterSpecific)
 end
 
 function DebouncePrivate.EnumerateProfileLayers()
-    local spec = GetSpecialization();
+    local spec = C_SpecializationInfo.GetSpecialization();
     local indexArray = {};
 
     if (spec > 0 and spec <= NUM_SPECS) then
@@ -339,7 +340,7 @@ function DebouncePrivate.EnumerateProfileLayers()
 end
 
 function DebouncePrivate.EnumerateActionsInActiveLayers()
-    local spec = GetSpecialization();
+    local spec = C_SpecializationInfo.GetSpecialization();
     local layerIdArray = {};
 
     if (spec > 0 and spec <= NUM_SPECS) then

@@ -1,7 +1,7 @@
 ﻿local _, DebouncePrivate     = ...;
 DebouncePrivate.DebounceUI   = {};
 
-local NUM_SPECS              = GetNumSpecializationsForClassID(select(3, UnitClass("player")));
+local NUM_SPECS              = C_SpecializationInfo.GetNumSpecializationsForClassID(select(3, UnitClass("player")));
 local Constants              = DebouncePrivate.Constants;
 local LLL                    = DebouncePrivate.L;
 local DebounceUI             = DebouncePrivate.DebounceUI;
@@ -319,7 +319,7 @@ local function GetSideTabaLabel(sideTabID)
 	elseif (sideTabID == 2) then
 		return UnitClass("player");
 	else
-		local _, specName = GetSpecializationInfo(sideTabID - 2);
+		local _, specName = C_SpecializationInfo.GetSpecializationInfo(sideTabID - 2);
 		return specName;
 	end
 end
@@ -419,8 +419,8 @@ local function NameAndIconFromElementData(elementData)
 
 	local actionName, actionIcon;
 	if (type == Constants.SPELL) then
-		local baseSpellID = FindBaseSpellByID(value) or value;
-		local overrideID = FindSpellOverrideByID(baseSpellID);
+		local baseSpellID = C_SpellBook.FindBaseSpellByID(value) or value;
+		local overrideID = C_SpellBook.FindSpellOverrideByID(baseSpellID) or baseSpellID;
 		actionName, actionIcon = GetSpellNameAndIconID(overrideID);
 	elseif (type == Constants.MACRO) then
 		local macroName;
@@ -1454,7 +1454,7 @@ function DebounceFrameMixin:InitializeSideTabs()
 				tab:Hide();
 				break;
 			end
-			_, name, _, icon = GetSpecializationInfo(spec);
+			_, name, _, icon = C_SpecializationInfo.GetSpecializationInfo(spec);
 		end
 		tab:SetNormalTexture(icon);
 		tab.tooltip = name;
@@ -1463,7 +1463,7 @@ function DebounceFrameMixin:InitializeSideTabs()
 end
 
 function DebounceFrameMixin:UpdateSideTabs()
-	local currentSpec = GetSpecialization();
+	local currentSpec = C_SpecializationInfo.GetSpecialization();
 	self.currentSpec = currentSpec;
 
 	local tabOrders = { 1, 2 };
@@ -1607,7 +1607,7 @@ do
 				self.dataProvider:Sort();
 
 				-- i dont remember what these are for, but they seem to be working fine, so i'll leave them for now
-				local dataIndex = self.ScrollBox:FindIndex(_placeholder);
+				local dataIndex = self.dataProvider:FindIndex(_placeholder);
 				local elementExtent = self.ScrollBox:GetElementExtent(dataIndex);
 				local elementOffset = self.ScrollBox:GetExtentUntil(dataIndex);
 				local visibleExtent = self.ScrollBox:GetVisibleExtent();

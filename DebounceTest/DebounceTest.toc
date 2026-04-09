@@ -1,0 +1,8 @@
+## Interface: 120000
+
+## Title: Debounce Test
+## Notes: In-game test framework for Debounce addon
+## Author: mundi4
+## Dependencies: Debounce
+
+DebounceTest.lua
