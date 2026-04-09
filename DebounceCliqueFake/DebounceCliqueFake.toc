@@ -1,4 +1,4 @@
-## Interface: 110200
+## Interface: 120001, 120005, 120000
 
 ## Title: Debounce Clique Fake
 ## Version: @project-version@
